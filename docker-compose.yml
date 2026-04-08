@@ -29,7 +29,7 @@ services:
     container_name: obrafirmada_backend
     restart: unless-stopped
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       DATABASE_URL: mysql://obrafirmada_user:obrafirmada_dev_password@db:3306/obrafirmada_dev
       JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production}
       JWT_EXPIRES_IN: 24h
@@ -44,20 +44,26 @@ services:
       - obrafirmada_network
     command: npm run start:prod
 
+  # Servicio Frontend Next.js
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
     container_name: obrafirmada_frontend
     restart: unless-stopped
     environment:
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
     ports:
       - "3000:3000"
     depends_on:
-      - app
+      app:
+        condition: service_started
     networks:
       - obrafirmada_network
+    command: npm run start
 
 volumes:
   mysql_data:

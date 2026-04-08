@@ -9,7 +9,6 @@ import { Injectable, BadRequestException, ConflictException, InternalServerError
 import { IUserRepository } from '../../domain/interfaces/user-repository.interface';
 import { CryptographyService } from '@shared/services/cryptography.service';
 import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../../presentation/dtos/enrollment.dto';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class EnrollmentService {

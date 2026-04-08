@@ -10,7 +10,6 @@ import { EnrollmentService } from './application/services/enrollment.service';
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository';
 import { PrismaService } from '@shared/services/prisma.service';
 import { CryptographyService } from '@shared/services/cryptography.service';
-import { IUserRepository } from './domain/interfaces/user-repository.interface';
 
 @Global()
 @Module({

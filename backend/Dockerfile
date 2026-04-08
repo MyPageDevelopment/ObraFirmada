@@ -1,9 +1,9 @@
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Prisma requiere OpenSSL en runtime/build en Alpine
-RUN apk add --no-cache openssl
+# Prisma requiere OpenSSL disponible para detectar y generar el engine correcto
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copiar archivos de dependencias
 COPY package*.json ./
