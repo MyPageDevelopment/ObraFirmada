@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  # Servicio MySQL para persistencia de datos
+  db:
+    image: mysql:8.0.35
+    container_name: obrafirmada_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_password
+      MYSQL_DATABASE: obrafirmada_dev
+      MYSQL_USER: obrafirmada_user
+      MYSQL_PASSWORD: obrafirmada_dev_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - obrafirmada_network
+
+  # Servicio Backend NestJS
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: obrafirmada_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://obrafirmada_user:obrafirmada_dev_password@db:3306/obrafirmada_dev
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production}
+      JWT_EXPIRES_IN: 24h
+      BCRYPT_ROUNDS: 10
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - obrafirmada_network
+    command: npm run start:dev
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  obrafirmada_network:
+    driver: bridge

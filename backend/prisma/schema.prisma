@@ -1,0 +1,144 @@
+// Prisma Schema para ObraFirmada
+// Esquema moderno para enrolamiento biométrico y firma de documentos laborales
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// Modelo User: Representa trabajadores enrolados en el sistema
+/// Seguridad: Los vectores biométricos son hashes irreversibles (NO se almacenan imágenes)
+/// Cumple Ley 19.628 de Protección de Datos en Chile
+model User {
+  /// Identificador único (UUID)
+  id String @id @default(cuid())
+
+  /// RUT chileno validado y normalizado (ej: "12345678-9")
+  /// Único en la sistema (constraint de DB)
+  rut String @unique @db.VarChar(12)
+
+  /// Email del trabajador para notificaciones y recuperación
+  email String @unique @db.VarChar(255)
+
+  /// Nombre completo del trabajador
+  fullName String @db.VarChar(255)
+
+  /// Vector biométrico facial: Hash criptográfico SHA-256 (irreversible)
+  /// CRÍTICO DE SEGURIDAD: Nunca se almacena la imagen facial original
+  /// Hash generado con salt criptográfico único
+  facialBiometricVector String @unique @db.Char(64)
+
+  /// Vector biométrico de palma: Hash criptográfico SHA-256 (irreversible)
+  /// CRÍTICO DE SEGURIDAD: Nunca se almacena la imagen de palma original
+  /// Hash generado con salt criptográfico único
+  palmBiometricVector String? @unique @db.Char(64)
+
+  /// Indicador: El usuario ha firmado el Aviso de Privacidad
+  /// Requerido para cumplimiento legal (Ley 19.628)
+  isConsentSigned Boolean @default(false)
+
+  /// Fecha y hora de firma del consentimiento
+  consentSignedAt DateTime?
+
+  /// Estado del enrolamiento: PENDING, VERIFIED, ACTIVE, SUSPENDED
+  enrollmentStatus String @default("PENDING") @db.VarChar(50)
+
+  /// Intentos fallidos de biometría (validación de seguridad)
+  biometricAttempts Int @default(0)
+
+  /// Última vez que se intentó verificación biométrica
+  lastBiometricAttemptAt DateTime?
+
+  /// Encriptación de datos sensibles adicionales (teléfono, dirección)
+  /// Implementar con AES-256-GCM
+  encryptedAdditionalData String? @db.LongText
+
+  /// Marca de tiempo: Creación del registro
+  createdAt DateTime @default(now())
+
+  /// Marca de tiempo: Última actualización del perfil
+  updatedAt DateTime @updatedAt
+
+  /// Relación: Un usuario puede tener múltiples firmas de documentos
+  documentSignatures DocumentSignature[]
+
+  /// Relación: Un usuario puede tener múltiples auditorías de acceso
+  auditLogs AuditLog[]
+
+  @@index([rut])
+  @@index([email])
+  @@index([enrollmentStatus])
+  @@index([createdAt])
+}
+
+/// Modelo DocumentSignature: Registro de firmas de documentos laborales
+model DocumentSignature {
+  id String @id @default(cuid())
+
+  /// Relación con usuario que firma
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Identificador único del documento firmado
+  documentId String @db.VarChar(255)
+
+  /// Tipo de documento: CONTRATO, LICENCIA, FINIQUITO, etc.
+  documentType String @db.VarChar(100)
+
+  /// Hash SHA-256 del contenido del documento (Integridad)
+  documentHash String @db.Char(64)
+
+  /// Firma digital (se guardará como JWT firmado o similar)
+  signatureData String @db.LongText
+
+  /// Metadatos de la firma (IP, User Agent, localización)
+  signatureMetadata String @db.LongText
+
+  /// Marca temporal de la firma
+  signedAt DateTime @default(now())
+
+  /// Estado de validación: VALID, REVOKED, DISPUTED
+  status String @default("VALID") @db.VarChar(50)
+
+  @@index([userId])
+  @@index([documentId])
+  @@index([signedAt])
+}
+
+/// Modelo AuditLog: Registro de auditoría para cumplimiento legal
+model AuditLog {
+  id String @id @default(cuid())
+
+  /// Usuario asociado con la acción
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Tipo de evento: ENROLLMENT_START, BIOMETRIC_CAPTURE, CONSENT_SIGNED, DOCUMENT_SIGNED
+  eventType String @db.VarChar(100)
+
+  /// Descripción detallada del evento
+  description String @db.LongText
+
+  /// IP del cliente (para investigaciones)
+  ipAddress String? @db.VarChar(45)
+
+  /// User Agent del navegador
+  userAgent String? @db.LongText
+
+  /// Resultado: SUCCESS o FAILURE
+  result String @db.VarChar(50)
+
+  /// Datos adicionales en JSON (no sensibles)
+  metadata String? @db.LongText
+
+  /// Marca temporal del evento
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
