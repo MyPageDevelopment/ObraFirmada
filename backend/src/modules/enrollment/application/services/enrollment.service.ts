@@ -5,11 +5,10 @@
  * SEGURIDAD: Maneja biometría de forma segura e irreversible
  */
 
-import { Injectable, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { IUserRepository } from '../domain/interfaces/user-repository.interface';
+import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, Inject } from '@nestjs/common';
+import { IUserRepository } from '../../domain/interfaces/user-repository.interface';
 import { CryptographyService } from '@shared/services/cryptography.service';
-import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../presentation/dtos/enrollment.dto.ts';
-import * as crypto from 'crypto';
+import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../../presentation/dtos/enrollment.dto';
 
 @Injectable()
 export class EnrollmentService {
@@ -19,6 +18,7 @@ export class EnrollmentService {
    * Permite testing con mocks e intercambiar implementaciones
    */
   constructor(
+    @Inject('IUserRepository')
     private userRepository: IUserRepository,
     private cryptographyService: CryptographyService,
   ) {}
@@ -63,7 +63,7 @@ export class EnrollmentService {
       } as any);
 
       return this.mapUserToResponse(user);
-    } catch (error) {
+    } catch (error: any) {
       // SEGURIDAD: No exponer detalles de errores de DB
       if (error.code === 'P2002') {
         throw new ConflictException('Datos duplicados: RUT o email ya existen');
@@ -129,7 +129,7 @@ export class EnrollmentService {
       console.log(`✅ Biometría capturada para usuario ${dto.userId} - Tipo: ${dto.biometricType}`);
 
       return this.mapUserToResponse(updatedUser);
-    } catch (error) {
+    } catch (error: any) {
       // AUDITORÍA: Registrar intento fallido
       console.error(`❌ Error capturando biometría: ${error.message}`);
 
@@ -189,7 +189,7 @@ export class EnrollmentService {
       console.log(`✅ Consentimiento firmado para ${user.rut} - IP: ${dto.ipAddress}`);
 
       return this.mapUserToResponse(updatedUser);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Error firmando consentimiento: ${error.message}`);
       throw new InternalServerErrorException('Error al firmar consentimiento');
     }

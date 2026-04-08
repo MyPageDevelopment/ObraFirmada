@@ -58,7 +58,7 @@ export class CaptureBiometricDto {
    * Se valida tamaño máximo y formato
    * NUNCA se almacena en la BD, solo el hash SHA-256
    */
-  @IsBase64({ message: 'La imagen debe estar en formato Base64' })
+  @IsBase64({}, { message: 'La imagen debe estar en formato Base64' })
   @IsNotEmpty({ message: 'La imagen facial es requerida' })
   facialImage: string;
 
