@@ -61,14 +61,12 @@ export function ConsentComponent({ onAccept, onReject, isLoading = false }: Cons
 
             <section>
               <h2 className="font-bold text-lg mb-2 text-primary">3. Uso de Datos</h2>
-              <p>
-                Sus datos se utilizarán exclusivamente para:
-                <ul className="list-disc pl-6 mt-2 text-xs">
-                  <li>Verificación de identidad en enrolamiento</li>
-                  <li>Firma digital de documentos laborales</li>
-                  <li>Auditoría y cumplimiento legal</li>
-                </ul>
-              </p>
+              <p>Sus datos se utilizarán exclusivamente para:</p>
+              <ul className="list-disc pl-6 mt-2 text-xs">
+                <li>Verificación de identidad en enrolamiento</li>
+                <li>Firma digital de documentos laborales</li>
+                <li>Auditoría y cumplimiento legal</li>
+              </ul>
             </section>
 
             <section>

@@ -5,10 +5,10 @@
  * SEGURIDAD: Maneja biometría de forma segura e irreversible
  */
 
-import { Injectable, BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { IUserRepository } from '../domain/interfaces/user-repository.interface';
+import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, Inject } from '@nestjs/common';
+import { IUserRepository } from '../../domain/interfaces/user-repository.interface';
 import { CryptographyService } from '@shared/services/cryptography.service';
-import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../presentation/dtos/enrollment.dto.ts';
+import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../../presentation/dtos/enrollment.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class EnrollmentService {
    * Permite testing con mocks e intercambiar implementaciones
    */
   constructor(
-    private userRepository: IUserRepository,
+    @Inject('IUserRepository') private userRepository: IUserRepository,
     private cryptographyService: CryptographyService,
   ) {}
 
@@ -63,9 +63,9 @@ export class EnrollmentService {
       } as any);
 
       return this.mapUserToResponse(user);
-    } catch (error) {
+    } catch (error: unknown) {
       // SEGURIDAD: No exponer detalles de errores de DB
-      if (error.code === 'P2002') {
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
         throw new ConflictException('Datos duplicados: RUT o email ya existen');
       }
       throw new InternalServerErrorException('Error al crear usuario');
@@ -129,9 +129,10 @@ export class EnrollmentService {
       console.log(`✅ Biometría capturada para usuario ${dto.userId} - Tipo: ${dto.biometricType}`);
 
       return this.mapUserToResponse(updatedUser);
-    } catch (error) {
+    } catch (error: unknown) {
       // AUDITORÍA: Registrar intento fallido
-      console.error(`❌ Error capturando biometría: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error(`❌ Error capturando biometría: ${errorMessage}`);
 
       // Incrementar contador de intentos fallidos
       const currentAttempts = user.biometricAttempts + 1;
@@ -189,8 +190,9 @@ export class EnrollmentService {
       console.log(`✅ Consentimiento firmado para ${user.rut} - IP: ${dto.ipAddress}`);
 
       return this.mapUserToResponse(updatedUser);
-    } catch (error) {
-      console.error(`❌ Error firmando consentimiento: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error(`❌ Error firmando consentimiento: ${errorMessage}`);
       throw new InternalServerErrorException('Error al firmar consentimiento');
     }
   }

@@ -15,7 +15,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { EnrollmentService } from '../services/enrollment.service';
+import { EnrollmentService } from '../../application/services/enrollment.service';
 import {
   InitiateEnrollmentDto,
   CaptureBiometricDto,

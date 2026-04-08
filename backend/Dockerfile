@@ -2,11 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Prisma requiere OpenSSL en runtime/build en Alpine
+RUN apk add --no-cache openssl
+
 # Copiar archivos de dependencias
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci
+RUN npm install
 
 # Copiar código fuente
 COPY . .

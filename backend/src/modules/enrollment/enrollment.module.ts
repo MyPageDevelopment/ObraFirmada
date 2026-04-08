@@ -22,7 +22,7 @@ import { IUserRepository } from './domain/interfaces/user-repository.interface';
     // INYECCIÓN DE DEPENDENCIAS: Proveer interfaz IUserRepository
     // Implementado por PrismaUserRepository
     {
-      provide: IUserRepository,
+      provide: 'IUserRepository',
       useClass: PrismaUserRepository,
     },
   ],

@@ -21,7 +21,7 @@ export class InitiateEnrollmentDto {
   @Matches(/^\d{1,2}\.\d{3}\.\d{3}-[0-9kK]$|^\d{8}-[0-9kK]$/, {
     message: 'El RUT debe estar en formato válido (ej: 12345678-9)',
   })
-  rut: string;
+  rut!: string;
 
   /**
    * Email del trabajador
@@ -29,7 +29,7 @@ export class InitiateEnrollmentDto {
    */
   @IsEmail({}, { message: 'El email debe ser válido' })
   @MaxLength(255)
-  email: string;
+  email!: string;
 
   /**
    * Nombre completo del trabajador
@@ -38,7 +38,7 @@ export class InitiateEnrollmentDto {
   @IsNotEmpty({ message: 'El nombre es requerido' })
   @MinLength(3, { message: 'El nombre debe tener al menos 3 caracteres' })
   @MaxLength(255, { message: 'El nombre no puede exceder 255 caracteres' })
-  fullName: string;
+  fullName!: string;
 }
 
 /**
@@ -51,16 +51,16 @@ export class CaptureBiometricDto {
    */
   @IsString()
   @IsNotEmpty({ message: 'El ID de usuario es requerido' })
-  userId: string;
+  userId!: string;
 
   /**
    * Imagen facial en Base64
    * Se valida tamaño máximo y formato
    * NUNCA se almacena en la BD, solo el hash SHA-256
    */
-  @IsBase64({ message: 'La imagen debe estar en formato Base64' })
+  @IsBase64({}, { message: 'La imagen debe estar en formato Base64' })
   @IsNotEmpty({ message: 'La imagen facial es requerida' })
-  facialImage: string;
+  facialImage!: string;
 
   /**
    * Tipo de biometría: FACIAL, PALM, IRIS
@@ -68,7 +68,7 @@ export class CaptureBiometricDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/^(FACIAL|PALM|IRIS)$/)
-  biometricType: 'FACIAL' | 'PALM' | 'IRIS';
+  biometricType!: 'FACIAL' | 'PALM' | 'IRIS';
 }
 
 /**
@@ -81,50 +81,50 @@ export class SignConsentDto {
    */
   @IsString()
   @IsNotEmpty({ message: 'El ID de usuario es requerido' })
-  userId: string;
+  userId!: string;
 
   /**
    * Indicador: Usuario acepta términos de privacidad
    */
   @IsNotEmpty({ message: 'Debe aceptar los términos' })
-  acceptsPrivacyTerms: boolean;
+  acceptsPrivacyTerms!: boolean;
 
   /**
    * Indicador: Usuario acepta procesamiento de biometría
    */
   @IsNotEmpty({ message: 'Debe aceptar el procesamiento biométrico' })
-  acceptsBiometricProcessing: boolean;
+  acceptsBiometricProcessing!: boolean;
 
   /**
    * Indicador: Usuario acepta firma de documentos digitales
    */
   @IsNotEmpty({ message: 'Debe aceptar la firma digital de documentos' })
-  acceptsDigitalSignature: boolean;
+  acceptsDigitalSignature!: boolean;
 
   /**
    * IP del cliente (para auditoría)
    */
   @IsString()
   @IsNotEmpty()
-  ipAddress: string;
+  ipAddress!: string;
 
   /**
    * User Agent del navegador (para auditoría)
    */
   @IsString()
   @IsNotEmpty()
-  userAgent: string;
+  userAgent!: string;
 }
 
 /**
  * DTO de respuesta para enrolamiento completado
  */
 export class EnrollmentResponseDto {
-  userId: string;
-  rut: string;
-  email: string;
-  fullName: string;
-  enrollmentStatus: string;
-  isConsentSigned: boolean;
-  createdAt: Date;
+  userId!: string;
+  rut!: string;
+  email!: string;
+  fullName!: string;
+  enrollmentStatus!: string;
+  isConsentSigned!: boolean;
+  createdAt!: Date;
 }

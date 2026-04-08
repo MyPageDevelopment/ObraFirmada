@@ -107,7 +107,7 @@ export default function EnrollmentPage() {
       // Llamar a firmar consentimiento
       const consentResponse = await enrollmentApi.signConsent({
         userId: enrollmentData.userId,
-        acceptsPrivacityTerms: true,
+        acceptsPrivacyTerms: true,
         acceptsBiometricProcessing: true,
         acceptsDigitalSignature: true,
         ipAddress: 'client-detected',
