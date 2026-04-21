@@ -317,12 +317,6 @@ kill -9 <PID>
 docker exec -it obrafirmada_mysql mysql -uobrafirmada_user -p obrafirmada_dev
 ```
 
-## 📞 Soporte
-
-- 📧 Email: support@obrafirmada.cl
-- 🐛 Issues: [GitHub Issues](https://github.com/obrafirmada/issues)
-- 📱 WhatsApp: +56912345678
-
 ## 📄 Licencia
 
 Propietario - ObraFirmada 2026
