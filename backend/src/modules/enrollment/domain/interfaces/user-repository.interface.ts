@@ -14,10 +14,10 @@ import { User } from '@prisma/client';
 export interface IUserRepository {
   /**
    * Crear un nuevo usuario con datos iniciales
-   * @param data Datos del usuario a crear
+   * @param rut RUT normalizado
    * @returns Usuario creado
    */
-  create(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User>;
+  create(rut: string): Promise<User>;
 
   /**
    * Buscar usuario por ID
@@ -35,30 +35,8 @@ export interface IUserRepository {
 
   /**
    * Buscar usuario por email
-   * @param email Email del usuario
-   * @returns Usuario encontrado o null
-   */
-  findByEmail(email: string): Promise<User | null>;
-
-  /**
-   * Actualizar datos del usuario
-   * @param id Identificador del usuario
-   * @param data Datos a actualizar
-   * @returns Usuario actualizado
-   */
-  update(id: string, data: Partial<User>): Promise<User>;
-
-  /**
-   * Verificar existencia de usuario por RUT
    * @param rut RUT a verificar
    * @returns true si existe
    */
   existsByRut(rut: string): Promise<boolean>;
-
-  /**
-   * Verificar existencia de usuario por email
-   * @param email Email a verificar
-   * @returns true si existe
-   */
-  existsByEmail(email: string): Promise<boolean>;
 }

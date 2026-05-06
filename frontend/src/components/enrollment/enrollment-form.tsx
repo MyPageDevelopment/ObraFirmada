@@ -9,15 +9,13 @@ import React, { useState } from 'react';
 import { isValidChileanRut, formatChileanRut } from '@/lib/utils/rut-validator';
 
 interface EnrollmentFormProps {
-  onSubmit: (data: { rut: string; email: string; fullName: string }) => void;
+  onSubmit: (data: { rut: string }) => void;
   isLoading?: boolean;
 }
 
 export function EnrollmentFormComponent({ onSubmit, isLoading = false }: EnrollmentFormProps) {
   const [formData, setFormData] = useState({
     rut: '',
-    email: '',
-    fullName: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,20 +31,6 @@ export function EnrollmentFormComponent({ onSubmit, isLoading = false }: Enrollm
       newErrors.rut = 'RUT inválido (verifica el dígito verificador)';
     }
 
-    // Validar email
-    if (!formData.email.trim()) {
-      newErrors.email = 'El email es requerido';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email inválido';
-    }
-
-    // Validar nombre
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'El nombre completo es requerido';
-    } else if (formData.fullName.length < 3) {
-      newErrors.fullName = 'El nombre debe tener al menos 3 caracteres';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -59,11 +43,6 @@ export function EnrollmentFormComponent({ onSubmit, isLoading = false }: Enrollm
       setFormData((prev) => ({
         ...prev,
         [name]: value.toUpperCase(),
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
       }));
     }
 
@@ -150,61 +129,11 @@ export function EnrollmentFormComponent({ onSubmit, isLoading = false }: Enrollm
             </p>
           </div>
 
-          {/* Campo Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-              Email *
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="trabajador@ejemplo.com"
-              value={formData.email}
-              onChange={handleChange}
-              onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
-              className={`w-full px-4 py-2 border-2 rounded-lg focus:outline-none transition ${
-                touched.email && errors.email
-                  ? 'border-danger focus:border-danger bg-red-50'
-                  : 'border-gray-300 focus:border-secondary'
-              }`}
-              disabled={isLoading}
-            />
-            {touched.email && errors.email && (
-              <p className="text-danger text-sm mt-1">❌ {errors.email}</p>
-            )}
-          </div>
-
-          {/* Campo Nombre Completo */}
-          <div>
-            <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2">
-              Nombre Completo *
-            </label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              placeholder="Juan Pérez García"
-              value={formData.fullName}
-              onChange={handleChange}
-              onBlur={() => setTouched((prev) => ({ ...prev, fullName: true }))}
-              className={`w-full px-4 py-2 border-2 rounded-lg focus:outline-none transition ${
-                touched.fullName && errors.fullName
-                  ? 'border-danger focus:border-danger bg-red-50'
-                  : 'border-gray-300 focus:border-secondary'
-              }`}
-              disabled={isLoading}
-            />
-            {touched.fullName && errors.fullName && (
-              <p className="text-danger text-sm mt-1">❌ {errors.fullName}</p>
-            )}
-          </div>
-
           {/* Nota de seguridad */}
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
             <p className="text-xs text-blue-800">
-              🔒 <span className="font-semibold">Tu información es segura:</span> Se encripta en tránsito y en reposo
-              conforme a estándares OWASP y Ley 19.628.
+              🔒 <span className="font-semibold">Tu información es segura:</span> Solo se usa para enrolamiento
+              biometrico conforme a la Ley 19.628.
             </p>
           </div>
 

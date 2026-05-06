@@ -6,18 +6,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { EnrollmentFormComponent } from '@/components/enrollment/enrollment-form';
 import { ConsentComponent } from '@/components/enrollment/consent-component';
 import { BiometricCaptureComponent } from '@/components/enrollment/biometric-capture';
+import { SignatureCaptureComponent } from '@/components/enrollment/signature-capture';
+import { EnrollmentFormComponent } from '@/components/enrollment/enrollment-form';
 import { enrollmentApi } from '@/lib/services/enrollment-api.service';
 
-type EnrollmentStep = 'consent' | 'form' | 'biometric' | 'success' | 'error';
+type EnrollmentStep = 'consent' | 'form' | 'signature' | 'biometric' | 'success' | 'error';
 
 interface EnrollmentState {
-  userId?: string;
   rut?: string;
-  email?: string;
-  fullName?: string;
+  signatureBase64?: string;
+  biometricImageBase64?: string;
+  identityLogId?: string;
+  capturedAt?: string;
+  biometricType?: 'FACE' | 'PALM';
 }
 
 export default function EnrollmentPage() {
@@ -49,27 +52,18 @@ export default function EnrollmentPage() {
   };
 
   /**
-   * PASO 2: Usuario completa formulario inicial
+   * PASO 2: Usuario ingresa RUT
    */
-  const handleFormSubmit = async (data: { rut: string; email: string; fullName: string }) => {
+  const handleFormSubmit = async (data: { rut: string }) => {
     setIsLoading(true);
-    setError(null);
-
     try {
-      // Llamar al backend para iniciar enrolamiento
-      const response = await enrollmentApi.initiateEnrollment(data);
-
-      // Guardar datos y pasar a captura biométrica
-      setEnrollmentData({
-        userId: response.userId,
-        rut: response.rut,
-        email: response.email,
-        fullName: response.fullName,
-      });
-
-      setStep('biometric');
+      setEnrollmentData((prev) => ({
+        ...prev,
+        rut: data.rut,
+      }));
+      setStep('signature');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al iniciar enrolamiento';
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar RUT';
       setError(errorMessage);
       console.error('Error:', errorMessage);
     } finally {
@@ -78,48 +72,53 @@ export default function EnrollmentPage() {
   };
 
   /**
-   * PASO 3: Usuario captura biometría
+   * PASO 3: Usuario captura firma manuscrita
+   */
+  const handleSignatureConfirm = async (signatureBase64: string) => {
+    setIsLoading(true);
+    try {
+      setEnrollmentData((prev) => ({
+        ...prev,
+        signatureBase64,
+      }));
+      setStep('biometric');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar firma';
+      setError(errorMessage);
+      console.error('Error:', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * PASO 4: Usuario captura biometria y se envia al backend
    */
   const handleBiometricCapture = async (imageBase64: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      if (!enrollmentData.userId) {
-        throw new Error('Usuario no inicializado correctamente');
+      if (!enrollmentData.rut || !enrollmentData.signatureBase64) {
+        throw new Error('Datos incompletos para registrar identidad');
       }
 
-      // Enviar biometría al backend
-      const response = await enrollmentApi.captureBiometric({
-        userId: enrollmentData.userId,
-        facialImage: imageBase64,
-        biometricType: 'FACIAL',
+      const response = await enrollmentApi.registerIdentity({
+        rut: enrollmentData.rut,
+        biometricImageBase64: imageBase64,
+        biometricType: 'FACE',
+        signatureBase64: enrollmentData.signatureBase64,
       });
-
-      console.log('✅ Biometría capturada exitosamente');
-
-      // Proceder a firmar consentimiento
-      setEnrollmentData((prev) => ({
-        ...prev,
-        ...response,
-      }));
-
-      // Llamar a firmar consentimiento
-      const consentResponse = await enrollmentApi.signConsent({
-        userId: enrollmentData.userId,
-        acceptsPrivacyTerms: true,
-        acceptsBiometricProcessing: true,
-        acceptsDigitalSignature: true,
-        ipAddress: 'client-detected',
-        userAgent: navigator.userAgent,
-      });
-
-      console.log('✅ Enrolamiento completado exitosamente');
 
       setEnrollmentData((prev) => ({
         ...prev,
-        ...consentResponse,
+        biometricImageBase64: imageBase64,
+        identityLogId: response.identityLogId,
+        capturedAt: response.capturedAt,
+        biometricType: response.biometricType,
       }));
+
+      console.log('✅ Identidad registrada exitosamente');
 
       setStep('success');
     } catch (err) {
@@ -153,11 +152,20 @@ export default function EnrollmentPage() {
           />
         );
 
+      case 'signature':
+        return (
+          <SignatureCaptureComponent
+            onConfirm={handleSignatureConfirm}
+            onBack={() => setStep('form')}
+            isLoading={isLoading}
+          />
+        );
+
       case 'biometric':
         return (
           <BiometricCaptureComponent
             onCapture={handleBiometricCapture}
-            biometricType="FACIAL"
+            biometricType="FACE"
             isLoading={isLoading}
           />
         );
@@ -204,7 +212,7 @@ function SuccessScreenComponent({ enrollmentData }: { enrollmentData: Enrollment
 
           <div className="bg-green-50 border-l-4 border-success p-6 rounded text-left space-y-3">
             <p className="font-semibold text-lg text-gray-800">
-              Bienvenido, <span className="text-success">{enrollmentData.fullName}</span>
+              Identidad registrada correctamente
             </p>
 
             <div className="space-y-2 text-sm">
@@ -212,10 +220,18 @@ function SuccessScreenComponent({ enrollmentData }: { enrollmentData: Enrollment
                 <span className="font-semibold">RUT:</span> {enrollmentData.rut}
               </p>
               <p>
-                <span className="font-semibold">Email:</span> {enrollmentData.email}
+                <span className="font-semibold">Firma capturada:</span>{' '}
+                {enrollmentData.signatureBase64 ? 'Si' : 'No'}
               </p>
               <p>
-                <span className="font-semibold">ID Usuario:</span> {enrollmentData.userId}
+                <span className="font-semibold">Biometria capturada:</span>{' '}
+                {enrollmentData.biometricImageBase64 ? 'Si' : 'No'}
+              </p>
+              <p>
+                <span className="font-semibold">Log ID:</span> {enrollmentData.identityLogId || 'Pendiente'}
+              </p>
+              <p>
+                <span className="font-semibold">Capturado:</span> {enrollmentData.capturedAt || 'Pendiente'}
               </p>
             </div>
           </div>
@@ -223,18 +239,18 @@ function SuccessScreenComponent({ enrollmentData }: { enrollmentData: Enrollment
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-sm text-blue-800">
             <p className="font-semibold mb-2">✨ Lo que sucedió:</p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Tu identidad fue verificada con éxito</li>
-              <li>Tu biometría se procesó y encriptó de forma irreversible</li>
-              <li>Aceptaste las políticas de privacidad</li>
-              <li>Tu cuenta está lista para firmar documentos laborales</li>
+              <li>Leiste y aceptaste el aviso de privacidad</li>
+              <li>Capturaste tu firma manuscrita digital</li>
+              <li>Capturaste tu biometria con la camara</li>
+              <li>El backend proceso y registro tu identidad</li>
             </ul>
           </div>
 
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded text-sm text-yellow-800">
             <p className="font-semibold mb-2">🔐 Datos Sensibles:</p>
             <p>
-              NUNCA se almacenó tu imagen facial original. Solo se guardó un hash criptográfico
-              irreversible que permite verificar tu identidad en futuras sesiones.
+              NUNCA se almacenara tu imagen original. Solo se guardara un hash criptografico
+              irreversible cifrado que permite verificar tu identidad en futuras sesiones.
             </p>
           </div>
 

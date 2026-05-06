@@ -31,6 +31,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: mysql://obrafirmada_user:obrafirmada_dev_password@db:3306/obrafirmada_dev
+      BIOMETRIC_ENCRYPTION_KEY: ${BIOMETRIC_ENCRYPTION_KEY:-dev_biometric_key_change_me_32_chars}
       JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production}
       JWT_EXPIRES_IN: 24h
       BCRYPT_ROUNDS: 10

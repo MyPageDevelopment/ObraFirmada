@@ -5,10 +5,15 @@
  * SEGURIDAD: Maneja biometría de forma segura e irreversible
  */
 
-import { Injectable, BadRequestException, ConflictException, InternalServerErrorException, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, Inject } from '@nestjs/common';
 import { IUserRepository } from '../../domain/interfaces/user-repository.interface';
+import { IIdentityLogRepository } from '../../domain/interfaces/identity-log-repository.interface';
 import { CryptographyService } from '@shared/services/cryptography.service';
-import { InitiateEnrollmentDto, CaptureBiometricDto, SignConsentDto, EnrollmentResponseDto } from '../../presentation/dtos/enrollment.dto';
+import {
+  RegisterIdentityDto,
+  RegisterIdentityResponseDto,
+  IdentityStatusResponseDto,
+} from '../../presentation/dtos/enrollment.dto';
 
 @Injectable()
 export class EnrollmentService {
@@ -18,210 +23,109 @@ export class EnrollmentService {
    * Permite testing con mocks e intercambiar implementaciones
    */
   constructor(
-    @Inject('IUserRepository') private userRepository: IUserRepository,
+    @Inject('IUserRepository')
+    private userRepository: IUserRepository,
+    @Inject('IIdentityLogRepository')
+    private identityLogRepository: IIdentityLogRepository,
     private cryptographyService: CryptographyService,
   ) {}
 
   /**
-   * FASE 1: Iniciar enrolamiento
-   * Valida datos del usuario y crea registro inicial
-   * @param dto Datos del usuario
-   * @returns Usuario creado con estado PENDING
+   * Registrar identidad biometrica y firma manuscrita
+   * SEGURIDAD CRITICA:
+   * - Genera hash irreversible del vector
+   * - Encripta el hash con AES-256-GCM
+   * - La imagen original nunca se persiste
    */
-  async initiateEnrollment(dto: InitiateEnrollmentDto): Promise<EnrollmentResponseDto> {
-    // SEGURIDAD: Validar RUT chileno (se valida en DTO también, pero redundancia es seguridad)
+  async registerIdentity(dto: RegisterIdentityDto): Promise<RegisterIdentityResponseDto> {
     if (!this.cryptographyService.isValidChileanRut(dto.rut)) {
-      throw new BadRequestException('RUT chileno inválido');
+      throw new BadRequestException('RUT chileno invalido');
     }
 
-    // Normalizar RUT
     const normalizedRut = this.cryptographyService.normalizeChileanRut(dto.rut);
 
-    // SEGURIDAD: Verificar que RUT no exista (duplicate check)
-    const existingByRut = await this.userRepository.existsByRut(normalizedRut);
-    if (existingByRut) {
-      throw new ConflictException('RUT ya está registrado en el sistema');
+    const encryptionKey = process.env.BIOMETRIC_ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw new InternalServerErrorException('Configuracion de cifrado no disponible');
     }
 
-    // SEGURIDAD: Verificar que email no exista
-    const existingByEmail = await this.userRepository.existsByEmail(dto.email);
-    if (existingByEmail) {
-      throw new ConflictException('Email ya está registrado en el sistema');
-    }
-
-    try {
-      // Crear usuario con estado PENDING (sin biometría aún)
-      const user = await this.userRepository.create({
-        rut: normalizedRut,
-        email: dto.email,
-        fullName: dto.fullName,
-        facialBiometricVector: '', // Placeholder, se llenará en siguiente fase
-        enrollmentStatus: 'PENDING',
-        isConsentSigned: false,
-        biometricAttempts: 0,
-      } as any);
-
-      return this.mapUserToResponse(user);
-    } catch (error: unknown) {
-      // SEGURIDAD: No exponer detalles de errores de DB
-      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
-        throw new ConflictException('Datos duplicados: RUT o email ya existen');
-      }
-      throw new InternalServerErrorException('Error al crear usuario');
-    }
-  }
-
-  /**
-   * FASE 2: Capturar y procesar biometría
-   * SEGURIDAD CRÍTICA: Recibe imagen Base64, la convierte a hash SHA-256 irreversible
-   * La imagen NUNCA se almacena en la BD
-   * 
-   * Flujo:
-   * 1. Validar usuario existe y está en estado PENDING
-   * 2. Generar salt criptográfico único
-   * 3. Convertir imagen Base64 a hash SHA-256 + salt
-   * 4. Almacenar solo el hash
-   * 5. Actualizar estado a BIOMETRIC_CAPTURED
-   * 
-   * @param dto Datos con imagen biométrica en Base64
-   * @returns Usuario actualizado
-   */
-  async captureBiometric(dto: CaptureBiometricDto): Promise<EnrollmentResponseDto> {
-    // Validar que usuario existe
-    const user = await this.userRepository.findById(dto.userId);
+    let user = await this.userRepository.findByRut(normalizedRut);
     if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
-    }
-
-    // Validar que está en estado PENDING
-    if (user.enrollmentStatus !== 'PENDING') {
-      throw new BadRequestException(`El usuario no puede capturar biometría en estado ${user.enrollmentStatus}`);
-    }
-
-    try {
-      // SEGURIDAD CRÍTICA: Generar salt único para esta biometría
-      const salt = this.cryptographyService.generateCryptographicSalt();
-
-      // SEGURIDAD CRÍTICA: Convertir imagen Base64 a hash irreversible
-      const biometricHash = this.cryptographyService.generateBiometricHash(dto.facialImage, salt);
-
-      // Validar que el hash sea válido (64 caracteres hexadecimales para SHA-256)
-      if (!this.isValidSha256Hash(biometricHash)) {
-        throw new InternalServerErrorException('Error al generar hash biométrico');
+      try {
+        user = await this.userRepository.create(normalizedRut);
+      } catch (error: any) {
+        throw new InternalServerErrorException('Error al crear usuario');
       }
+    }
 
-      // Actualizar usuario con hash biométrico
-      const updateData: any = {
-        enrollmentStatus: 'BIOMETRIC_CAPTURED',
-        lastBiometricAttemptAt: new Date(),
-      };
+    // Dedupe: evitar doble registro inmediato por el mismo RUT
+    const latestLog = await this.identityLogRepository.findLatestByRut(normalizedRut);
+    if (latestLog) {
+      const now = Date.now();
+      const lastCaptured = latestLog.capturedAt.getTime();
+      const withinWindow = now - lastCaptured < 15000;
+      const sameSignature = latestLog.signatureBase64 === dto.signatureBase64;
+      const sameType = latestLog.biometricType === dto.biometricType;
 
-      if (dto.biometricType === 'FACIAL') {
-        updateData.facialBiometricVector = biometricHash;
-      } else if (dto.biometricType === 'PALM') {
-        updateData.palmBiometricVector = biometricHash;
+      if (withinWindow && sameSignature && sameType) {
+        return {
+          userId: latestLog.userId,
+          identityLogId: latestLog.id,
+          rut: normalizedRut,
+          biometricType: latestLog.biometricType as 'FACE' | 'PALM',
+          capturedAt: latestLog.capturedAt,
+        };
       }
-
-      const updatedUser = await this.userRepository.update(dto.userId, updateData);
-
-      // AUDITORÍA: Registrar intento exitoso
-      console.log(`✅ Biometría capturada para usuario ${dto.userId} - Tipo: ${dto.biometricType}`);
-
-      return this.mapUserToResponse(updatedUser);
-    } catch (error: unknown) {
-      // AUDITORÍA: Registrar intento fallido
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      console.error(`❌ Error capturando biometría: ${errorMessage}`);
-
-      // Incrementar contador de intentos fallidos
-      const currentAttempts = user.biometricAttempts + 1;
-      await this.userRepository.update(dto.userId, {
-        biometricAttempts: currentAttempts,
-        lastBiometricAttemptAt: new Date(),
-      } as any);
-
-      // SEGURIDAD: Si hay demasiados intentos fallidos, suspender cuenta
-      if (currentAttempts >= 5) {
-        await this.userRepository.update(dto.userId, {
-          enrollmentStatus: 'SUSPENDED',
-        } as any);
-        throw new BadRequestException('Demasiados intentos fallidos. Cuenta suspendida.');
-      }
-
-      throw error;
-    }
-  }
-
-  /**
-   * FASE 3: Firmar consentimiento de privacidad
-   * CUMPLIMENTO LEY 19.628 CHILE
-   * El usuario debe aceptar explícitamente el procesamiento de datos biométricos
-   * 
-   * @param dto Datos de consentimiento y aceptación
-   * @returns Usuario con consentimiento firmado
-   */
-  async signConsent(dto: SignConsentDto): Promise<EnrollmentResponseDto> {
-    // Validar que usuario existe
-    const user = await this.userRepository.findById(dto.userId);
-    if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
     }
 
-    // LÓGICA DE NEGOCIO: Todas las aceptaciones son requeridas
-    if (!dto.acceptsPrivacyTerms || !dto.acceptsBiometricProcessing || !dto.acceptsDigitalSignature) {
-      throw new BadRequestException('Debe aceptar todos los términos para continuar');
+    // Procesamiento seguro del vector biometrico
+    const salt = this.cryptographyService.generateCryptographicSalt();
+    let imageBase64 = dto.biometricImageBase64;
+    const biometricHash = this.cryptographyService.generateBiometricHash(imageBase64, salt);
+
+    if (!this.isValidSha256Hash(biometricHash)) {
+      throw new InternalServerErrorException('Error al generar hash biometrico');
     }
 
-    // SEGURIDAD: Validar que usuario tiene biometría capturada
-    if (!user.facialBiometricVector) {
-      throw new BadRequestException('La biometría debe ser capturada antes de firmar consentimiento');
-    }
+    const encryptedVector = this.cryptographyService.encryptSensitiveData(biometricHash, encryptionKey);
 
-    try {
-      // Actualizar usuario con consentimiento firmado
-      const updatedUser = await this.userRepository.update(dto.userId, {
-        isConsentSigned: true,
-        consentSignedAt: new Date(),
-        enrollmentStatus: 'ACTIVE', // Enrolamiento completo
-      } as any);
+    // Intento de liberar referencia a imagen en memoria
+    imageBase64 = '';
 
-      // AUDITORÍA: Registrar firma de consentimiento
-      console.log(`✅ Consentimiento firmado para ${user.rut} - IP: ${dto.ipAddress}`);
-
-      return this.mapUserToResponse(updatedUser);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      console.error(`❌ Error firmando consentimiento: ${errorMessage}`);
-      throw new InternalServerErrorException('Error al firmar consentimiento');
-    }
-  }
-
-  /**
-   * Obtener estado actual de enrolamiento
-   * @param userId ID del usuario
-   * @returns Estado del enrolamiento
-   */
-  async getEnrollmentStatus(userId: string): Promise<EnrollmentResponseDto> {
-    const user = await this.userRepository.findById(userId);
-    if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
-    }
-    return this.mapUserToResponse(user);
-  }
-
-  /**
-   * Mapea entidad User a DTO de respuesta
-   * NO incluye datos sensibles como hashes biométricos completos
-   */
-  private mapUserToResponse(user: any): EnrollmentResponseDto {
+    const identityLog = await this.identityLogRepository.create({
+      userId: user.id,
+      rut: normalizedRut,
+      encryptedBiometricVector: encryptedVector,
+      signatureBase64: dto.signatureBase64,
+      biometricType: dto.biometricType,
+      capturedAt: new Date(),
+    });
     return {
       userId: user.id,
-      rut: user.rut,
-      email: user.email,
-      fullName: user.fullName,
-      enrollmentStatus: user.enrollmentStatus,
-      isConsentSigned: user.isConsentSigned,
-      createdAt: user.createdAt,
+      identityLogId: identityLog.id,
+      rut: normalizedRut,
+      biometricType: identityLog.biometricType as 'FACE' | 'PALM',
+      capturedAt: identityLog.capturedAt,
+    };
+  }
+
+  /**
+   * Obtener estado de identidad por RUT
+   */
+  async getIdentityStatus(rut: string): Promise<IdentityStatusResponseDto> {
+    if (!this.cryptographyService.isValidChileanRut(rut)) {
+      throw new BadRequestException('RUT chileno invalido');
+    }
+
+    const normalizedRut = this.cryptographyService.normalizeChileanRut(rut);
+    const latestLog = await this.identityLogRepository.findLatestByRut(normalizedRut);
+    const totalLogs = await this.identityLogRepository.countByRut(normalizedRut);
+
+    return {
+      rut: normalizedRut,
+      hasIdentityLog: !!latestLog,
+      lastCapturedAt: latestLog ? latestLog.capturedAt : null,
+      totalLogs,
     };
   }
 

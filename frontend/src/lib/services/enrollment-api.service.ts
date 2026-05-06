@@ -5,35 +5,19 @@
 
 import axios, { AxiosInstance } from 'axios';
 
-export interface InitiateEnrollmentRequest {
+export interface RegisterIdentityRequest {
   rut: string;
-  email: string;
-  fullName: string;
+  biometricImageBase64: string;
+  biometricType: 'FACE' | 'PALM';
+  signatureBase64: string;
 }
 
-export interface CaptureBiometricRequest {
+export interface RegisterIdentityResponse {
   userId: string;
-  facialImage: string;
-  biometricType: 'FACIAL' | 'PALM' | 'IRIS';
-}
-
-export interface SignConsentRequest {
-  userId: string;
-  acceptsPrivacyTerms: boolean;
-  acceptsBiometricProcessing: boolean;
-  acceptsDigitalSignature: boolean;
-  ipAddress: string;
-  userAgent: string;
-}
-
-export interface EnrollmentResponse {
-  userId: string;
+  identityLogId: string;
   rut: string;
-  email: string;
-  fullName: string;
-  enrollmentStatus: string;
-  isConsentSigned: boolean;
-  createdAt: string;
+  biometricType: 'FACE' | 'PALM';
+  capturedAt: string;
 }
 
 class EnrollmentApiService {
@@ -59,35 +43,10 @@ class EnrollmentApiService {
   }
 
   /**
-   * Inicia el proceso de enrolamiento
+   * Registra identidad biometrica
    */
-  async initiateEnrollment(data: InitiateEnrollmentRequest): Promise<EnrollmentResponse> {
-    const response = await this.api.post<EnrollmentResponse>('/enrollment/initiate', data);
-    return response.data;
-  }
-
-  /**
-   * Captura y procesa biometría
-   * SEGURIDAD: Imagen se convierte a Base64 antes de enviar
-   */
-  async captureBiometric(data: CaptureBiometricRequest): Promise<EnrollmentResponse> {
-    const response = await this.api.post<EnrollmentResponse>('/enrollment/capture-biometric', data);
-    return response.data;
-  }
-
-  /**
-   * Firma consentimiento de privacidad
-   */
-  async signConsent(data: SignConsentRequest): Promise<EnrollmentResponse> {
-    const response = await this.api.post<EnrollmentResponse>('/enrollment/sign-consent', data);
-    return response.data;
-  }
-
-  /**
-   * Obtiene estado actual de enrolamiento
-   */
-  async getEnrollmentStatus(userId: string): Promise<EnrollmentResponse> {
-    const response = await this.api.get<EnrollmentResponse>(`/enrollment/status/${userId}`);
+  async registerIdentity(data: RegisterIdentityRequest): Promise<RegisterIdentityResponse> {
+    const response = await this.api.post<RegisterIdentityResponse>('/enrollment/register-identity', data);
     return response.data;
   }
 }

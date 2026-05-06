@@ -11,7 +11,7 @@ import { CameraService } from '@/lib/utils/camera.service';
 
 interface BiometricCaptureProps {
   onCapture: (imageBase64: string) => void;
-  biometricType: 'FACIAL' | 'PALM';
+  biometricType: 'FACE' | 'PALM';
   isLoading?: boolean;
 }
 
@@ -21,7 +21,7 @@ export function BiometricCaptureComponent({
   isLoading = false,
 }: BiometricCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hasInitializedRef = useRef(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
@@ -29,15 +29,15 @@ export function BiometricCaptureComponent({
 
   // Inicializar cámara al montar
   useEffect(() => {
+    if (hasInitializedRef.current) {
+      return undefined;
+    }
+    hasInitializedRef.current = true;
+
     const initializeCamera = async () => {
       try {
         const mediaStream = await CameraService.requestCameraAccess();
         setStream(mediaStream);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          setCameraReady(true);
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al acceder a la cámara');
       }
@@ -51,6 +51,35 @@ export function BiometricCaptureComponent({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!stream || !video) {
+      return undefined;
+    }
+
+    let canceled = false;
+    const handleLoadedMetadata = async () => {
+      try {
+        await video.play();
+        if (!canceled) {
+          setCameraReady(true);
+        }
+      } catch {
+        if (!canceled) {
+          setError('No se pudo reproducir el video de la camara');
+        }
+      }
+    };
+
+    video.srcObject = stream;
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+    return () => {
+      canceled = true;
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [stream]);
 
   const handleCapture = () => {
     if (videoRef.current) {
@@ -79,7 +108,7 @@ export function BiometricCaptureComponent({
   };
 
   const getTitleAndInstructions = () => {
-    if (biometricType === 'FACIAL') {
+    if (biometricType === 'FACE') {
       return {
         title: '📸 Captura tu Rostro',
         instructions: [
@@ -118,17 +147,6 @@ export function BiometricCaptureComponent({
     );
   }
 
-  if (!cameraReady && !error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">⏳ Inicializando cámara...</h2>
-          <div className="animate-spin inline-block w-8 h-8 border-4 border-secondary border-t-transparent rounded-full"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full overflow-hidden">
@@ -136,7 +154,7 @@ export function BiometricCaptureComponent({
         <div className="bg-secondary text-white px-6 py-8 border-b-4 border-orange-600">
           <h1 className="text-3xl font-bold mb-2">{title}</h1>
           <p className="text-sm opacity-90">
-            {biometricType === 'FACIAL' ? 'Verificación de identidad facial' : 'Verificación de biometría de palma'}
+            {biometricType === 'FACE' ? 'Verificación de identidad facial' : 'Verificación de biometría de palma'}
           </p>
         </div>
 
@@ -161,16 +179,16 @@ export function BiometricCaptureComponent({
               className="w-full h-full object-cover"
             />
           ) : (
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full bg-black"
-              style={{ display: 'none' }}
+            <img
+              src={`data:image/jpeg;base64,${capturedImage}`}
+              alt="Captura biometrica"
+              className="w-full h-full object-cover"
             />
           )}
 
           {/* Marco de guía visual */}
           <div className="absolute inset-0 pointer-events-none">
-            {biometricType === 'FACIAL' && (
+            {biometricType === 'FACE' && (
               <svg className="w-full h-full" viewBox="0 0 640 480">
                 <circle
                   cx="320"
@@ -184,6 +202,15 @@ export function BiometricCaptureComponent({
               </svg>
             )}
           </div>
+
+          {!cameraReady && !error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white">
+              <div className="text-center">
+                <div className="animate-spin inline-block w-8 h-8 border-4 border-secondary border-t-transparent rounded-full"></div>
+                <p className="mt-3 text-sm">Inicializando camara...</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Botones */}

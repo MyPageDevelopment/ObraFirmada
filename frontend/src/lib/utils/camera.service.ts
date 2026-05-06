@@ -38,18 +38,24 @@ export class CameraService {
    */
   static captureFrame(videoElement: HTMLVideoElement): string {
     const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
+    const maxWidth = 720;
+    const maxHeight = 720;
+    const videoWidth = videoElement.videoWidth || maxWidth;
+    const videoHeight = videoElement.videoHeight || maxHeight;
+
+    const scale = Math.min(maxWidth / videoWidth, maxHeight / videoHeight, 1);
+    canvas.width = Math.round(videoWidth * scale);
+    canvas.height = Math.round(videoHeight * scale);
 
     const context = canvas.getContext('2d');
     if (!context) {
       throw new Error('No se pudo obtener contexto del canvas');
     }
 
-    context.drawImage(videoElement, 0, 0);
+    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
     // Convertir a Base64 (JPEG para comprimir)
-    return canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+    return canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
   }
 
   /**

@@ -15,20 +15,12 @@ export class PrismaUserRepository implements IUserRepository {
 
   /**
    * Crear nuevo usuario
-   * SEGURIDAD: Se valida que no exista RUT o email duplicados a nivel DB
+   * SEGURIDAD: Se valida que no exista RUT duplicado a nivel DB
    */
-  async create(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
+  async create(rut: string): Promise<User> {
     return this.prisma.user.create({
       data: {
-        rut: data.rut,
-        email: data.email,
-        fullName: data.fullName,
-        facialBiometricVector: data.facialBiometricVector,
-        palmBiometricVector: data.palmBiometricVector,
-        isConsentSigned: data.isConsentSigned || false,
-        enrollmentStatus: data.enrollmentStatus || 'PENDING',
-        biometricAttempts: 0,
-        encryptedAdditionalData: data.encryptedAdditionalData,
+        rut,
       },
     });
   }
@@ -45,37 +37,9 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { email },
-    });
-  }
-
-  /**
-   * Actualizar usuario
-   * SEGURIDAD: Solo actualiza campos permitidos
-   */
-  async update(id: string, data: Partial<User>): Promise<User> {
-    // Campos sensibles que NO se pueden actualizar directamente
-    const { id: _, createdAt, ...safeData } = data as any;
-
-    return this.prisma.user.update({
-      where: { id },
-      data: safeData,
-    });
-  }
-
   async existsByRut(rut: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: { rut },
-      select: { id: true },
-    });
-    return !!user;
-  }
-
-  async existsByEmail(email: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
       select: { id: true },
     });
     return !!user;
