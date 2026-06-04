@@ -24,6 +24,12 @@ export default function Home() {
             ➡️ Ir a Enrolamiento
           </a>
           <a
+            href="/equipment-delivery"
+            className="bg-emerald-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-600 transition"
+          >
+            📄 Entrega de EPP
+          </a>
+          <a
             href="http://localhost:3001/api"
             target="_blank"
             className="bg-white text-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition"

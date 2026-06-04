@@ -18,6 +18,7 @@ export class PrismaIdentityLogRepository implements IIdentityLogRepository {
         userId: data.userId,
         rut: data.rut,
         encryptedBiometricVector: data.encryptedBiometricVector,
+        biometricSalt: data.biometricSalt,
         signatureBase64: data.signatureBase64,
         biometricType: data.biometricType,
         capturedAt: data.capturedAt,

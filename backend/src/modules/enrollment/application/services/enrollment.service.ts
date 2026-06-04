@@ -80,6 +80,7 @@ export class EnrollmentService {
 
     // Procesamiento seguro del vector biometrico
     const salt = this.cryptographyService.generateCryptographicSalt();
+    const biometricSalt = salt.toString('hex');
     let imageBase64 = dto.biometricImageBase64;
     const biometricHash = this.cryptographyService.generateBiometricHash(imageBase64, salt);
 
@@ -96,6 +97,7 @@ export class EnrollmentService {
       userId: user.id,
       rut: normalizedRut,
       encryptedBiometricVector: encryptedVector,
+      biometricSalt,
       signatureBase64: dto.signatureBase64,
       biometricType: dto.biometricType,
       capturedAt: new Date(),
