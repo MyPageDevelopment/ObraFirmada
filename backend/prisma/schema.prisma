@@ -30,6 +30,9 @@ model User {
   /// Relacion: Un usuario puede tener multiples logs de identidad
   identityLogs IdentityLog[]
 
+  /// Relacion: Un usuario puede tener multiples actas de entrega de EPP
+  equipmentDeliveries EquipmentDelivery[]
+
   @@index([rut])
   @@index([createdAt])
 }
@@ -50,6 +53,9 @@ model IdentityLog {
   /// CRITICO: nunca almacenar imagen original
   encryptedBiometricVector String @db.LongText
 
+  /// Salt criptografico persistido para reproducir la comparacion 1:1
+  biometricSalt String @db.Char(32) @default("")
+
   /// Firma manuscrita digital en Base64 (canvas)
   signatureBase64 String @db.LongText
 
@@ -65,4 +71,117 @@ model IdentityLog {
   @@index([userId])
   @@index([rut])
   @@index([capturedAt])
+}
+
+/// Modelo EquipmentDelivery: Acta de entrega de EPP asociada a un trabajador
+/// Conserva datos denormalizados para auditoria legal y trazabilidad
+model EquipmentDelivery {
+  id String @id @default(cuid())
+
+  /// Relacion con el trabajador enrolado
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  /// RUT denormalizado para respaldo documental
+  rut String @db.VarChar(12)
+
+  /// Nombre completo del trabajador al momento de la entrega
+  workerFullName String @db.VarChar(160)
+
+  /// Lista de implementos entregados en formato estructurado
+  equipmentItems Json
+
+  /// Firma manuscrita digital asociada al acta
+  signatureBase64 String @db.LongText
+
+  /// Marca temporal de la entrega registrada por servidor
+  deliveredAt DateTime @default(now())
+
+  /// Marca temporal de la validacion biometric 1:1
+  biometricValidatedAt DateTime?
+
+  /// Marca temporal de la firma del acta
+  signedAt DateTime?
+
+  /// Campos para Geofencing (coordenadas GPS de la tablet)
+  latitude  Float?
+  longitude Float?
+
+  /// Campos para firma por excepción (Testigo de Fe)
+  isException            Boolean   @default(false)
+  witnessRut             String?   @db.VarChar(12)
+  witnessFullName        String?   @db.VarChar(160)
+  witnessSignatureBase64 String?   @db.LongText
+
+  /// Estado de entrega de la notificación
+  notificationStatus String @db.VarChar(20) @default("PENDING")
+
+  /// Relacion 1:1 con el registro de integridad documental
+  documentIntegrity DocumentIntegrity?
+
+  /// Auditoria de cambios del registro
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([rut])
+  @@index([deliveredAt])
+}
+
+/// Modelo DocumentIntegrity: Huella criptografica del PDF emitido
+/// Guarda el checksum SHA-256 para auditorias y validacion posterior
+model DocumentIntegrity {
+  id String @id @default(cuid())
+
+  /// Relacion 1:1 con el acta de entrega
+  equipmentDeliveryId String @unique
+  equipmentDelivery EquipmentDelivery @relation(fields: [equipmentDeliveryId], references: [id], onDelete: Cascade)
+
+  /// Algoritmo de hash utilizado por politica de integridad
+  algorithm String @db.VarChar(20) @default("SHA-256")
+
+  /// Hash SHA-256 del PDF generado
+  sha256 String @db.Char(64)
+
+  /// Metadatos adicionales del documento sellado
+  metadata Json?
+
+  /// Marca temporal de generacion de la huella
+  createdAt DateTime @default(now())
+
+  @@index([sha256])
+  @@index([createdAt])
+}
+
+/// Modelo GroupTalk: Registro de charla de seguridad grupal
+model GroupTalk {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(200)
+  speakerName String   @db.VarChar(160)
+  heldAt      DateTime @default(now())
+  latitude    Float?
+  longitude   Float?
+  attendees   GroupTalkAttendee[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([heldAt])
+}
+
+/// Modelo GroupTalkAttendee: Asistente a una charla grupal
+model GroupTalkAttendee {
+  id                   String     @id @default(cuid())
+  groupTalkId          String
+  groupTalk            GroupTalk  @relation(fields: [groupTalkId], references: [id], onDelete: Cascade)
+  rut                  String     @db.VarChar(12)
+  fullName             String     @db.VarChar(160)
+  validatedAt          DateTime   @default(now())
+  biometricType        String     @db.VarChar(20) // FACE or PALM
+  isException          Boolean    @default(false)
+  witnessRut           String?    @db.VarChar(12)
+  witnessFullName      String?    @db.VarChar(160)
+  witnessSignatureBase64 String?  @db.LongText
+
+  @@index([groupTalkId])
+  @@index([rut])
 }
