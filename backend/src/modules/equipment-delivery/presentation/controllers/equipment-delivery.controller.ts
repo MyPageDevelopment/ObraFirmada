@@ -6,10 +6,12 @@
 import {
   Body,
   Controller,
+  Get,
   Header,
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Res,
   StreamableFile,
 } from '@nestjs/common';
@@ -24,6 +26,61 @@ import { EquipmentDeliveryWorkflowService } from '../../application/services/equ
 @Controller('api/equipment-delivery')
 export class EquipmentDeliveryController {
   constructor(private equipmentDeliveryWorkflowService: EquipmentDeliveryWorkflowService) {}
+
+  /**
+   * GET /api/equipment-delivery/list
+   * Retorna listado paginado y filtrado de entregas
+   */
+  @Get('list')
+  async listDeliveries(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('rut') rut?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const limitNum = Math.max(1, parseInt(limit || '20', 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    let startD: Date | undefined;
+    let endD: Date | undefined;
+    if (startDate) {
+      startD = new Date(startDate);
+    }
+    if (endDate) {
+      endD = new Date(endDate);
+    }
+
+    return this.equipmentDeliveryWorkflowService.listDeliveries({
+      skip,
+      take: limitNum,
+      rut,
+      startDate: startD,
+      endDate: endD,
+    });
+  }
+
+  /**
+   * POST /api/equipment-delivery/export-zip
+   * Retorna un archivo comprimido ZIP con los PDFs de las entregas seleccionadas
+   */
+  @Post('export-zip')
+  @HttpCode(HttpStatus.OK)
+  async exportZip(
+    @Body() body: { ids: string[] },
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const zipBuffer = await this.equipmentDeliveryWorkflowService.exportZip(body.ids);
+
+    response.setHeader('Content-Type', 'application/zip');
+    response.setHeader('Content-Disposition', 'attachment; filename="actas-entrega.zip"');
+
+    return new StreamableFile(zipBuffer, {
+      type: 'application/zip',
+      disposition: 'attachment; filename="actas-entrega.zip"',
+    });
+  }
 
   /**
    * POST /api/equipment-delivery/documents

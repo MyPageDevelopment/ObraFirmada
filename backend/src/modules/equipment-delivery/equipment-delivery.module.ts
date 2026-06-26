@@ -11,6 +11,7 @@ import { EquipmentDeliveryWorkflowService } from './application/services/equipme
 import { PrismaEquipmentDeliveryRepository } from './infrastructure/repositories/prisma-equipment-delivery.repository';
 import { PrismaDocumentIntegrityRepository } from './infrastructure/repositories/prisma-document-integrity.repository';
 import { EquipmentDeliveryController } from './presentation/controllers/equipment-delivery.controller';
+import { NotificationService } from '@shared/services';
 
 @Module({
   controllers: [EquipmentDeliveryController],
@@ -19,6 +20,7 @@ import { EquipmentDeliveryController } from './presentation/controllers/equipmen
     EquipmentDeliveryPdfService,
     DocumentIntegrityService,
     EquipmentDeliveryWorkflowService,
+    NotificationService,
     {
       provide: 'IEquipmentDeliveryRepository',
       useClass: PrismaEquipmentDeliveryRepository,

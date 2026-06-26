@@ -20,6 +20,12 @@ export interface CreateEquipmentDeliveryRequest {
   biometricImageBase64: string;
   signatureBase64: string;
   equipmentItems: EquipmentItemPayload[];
+  latitude?: number;
+  longitude?: number;
+  isException?: boolean;
+  witnessRut?: string;
+  witnessFullName?: string;
+  witnessSignatureBase64?: string;
 }
 
 export interface CreateEquipmentDeliveryResult {
@@ -64,6 +70,38 @@ class EquipmentDeliveryApiService {
       documentIntegrityId: response.headers['x-document-integrity-id'] ?? null,
       sha256: response.headers['x-document-sha256'] ?? null,
     };
+  }
+
+  async listDeliveries(params: {
+    page: number;
+    limit: number;
+    rut?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ deliveries: any[]; total: number }> {
+    const response = await this.api.get('/equipment-delivery/list', {
+      params,
+      responseType: 'json',
+    });
+    return response.data;
+  }
+
+  async exportZip(ids: string[]): Promise<Blob> {
+    const response = await this.api.post<Blob>('/equipment-delivery/export-zip', { ids }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  async verifyBiometric(data: {
+    rut: string;
+    biometricType: 'FACE' | 'PALM';
+    biometricImageBase64: string;
+  }): Promise<{ verified: boolean; workerFullName?: string }> {
+    const response = await this.api.post('/equipment-delivery/verify', data, {
+      responseType: 'json',
+    });
+    return response.data;
   }
 }
 

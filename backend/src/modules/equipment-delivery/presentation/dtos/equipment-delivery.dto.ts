@@ -3,12 +3,15 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsBase64,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -44,9 +47,11 @@ export class VerifyBiometricDto {
   @IsIn(['FACE', 'PALM'])
   biometricType!: 'FACE' | 'PALM';
 
+  @IsOptional()
+  @ValidateIf((o: any) => !o.isException)
   @IsBase64({}, { message: 'La captura biometrica debe estar en Base64' })
   @IsNotEmpty()
-  biometricImageBase64!: string;
+  biometricImageBase64?: string;
 }
 
 export class CreateEquipmentDeliveryDto extends VerifyBiometricDto {
@@ -63,6 +68,30 @@ export class CreateEquipmentDeliveryDto extends VerifyBiometricDto {
   @IsBase64({}, { message: 'La firma debe estar en Base64' })
   @IsNotEmpty()
   signatureBase64!: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isException?: boolean;
+
+  @IsOptional()
+  @IsString()
+  witnessRut?: string;
+
+  @IsOptional()
+  @IsString()
+  witnessFullName?: string;
+
+  @IsOptional()
+  @IsString()
+  witnessSignatureBase64?: string;
 }
 
 export class BiometricVerificationResponseDto {

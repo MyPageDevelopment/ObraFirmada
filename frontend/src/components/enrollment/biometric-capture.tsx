@@ -13,12 +13,14 @@ interface BiometricCaptureProps {
   onCapture: (imageBase64: string) => void;
   biometricType: 'FACE' | 'PALM';
   isLoading?: boolean;
+  onWitnessBypass?: () => void;
 }
 
 export function BiometricCaptureComponent({
   onCapture,
   biometricType,
   isLoading = false,
+  onWitnessBypass,
 }: BiometricCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasInitializedRef = useRef(false);
@@ -170,15 +172,14 @@ export function BiometricCaptureComponent({
 
         {/* Video o Imagen Capturada */}
         <div className="aspect-video bg-black relative overflow-hidden">
-          {!capturedImage ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-          ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover ${capturedImage ? 'hidden' : ''}`}
+          />
+          {capturedImage && (
             <img
               src={`data:image/jpeg;base64,${capturedImage}`}
               alt="Captura biometrica"
@@ -217,6 +218,15 @@ export function BiometricCaptureComponent({
         <div className="bg-gray-100 px-6 py-4 flex gap-4 justify-end">
           {!capturedImage ? (
             <>
+              {onWitnessBypass && (
+                <button
+                  type="button"
+                  onClick={onWitnessBypass}
+                  className="px-6 py-3 border border-red-500 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition text-lg"
+                >
+                  ⚠️ Bypass Testigo
+                </button>
+              )}
               <button
                 onClick={handleCapture}
                 disabled={isLoading || !cameraReady}

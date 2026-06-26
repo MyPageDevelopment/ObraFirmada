@@ -10,7 +10,7 @@ services:
       MYSQL_USER: obrafirmada_user
       MYSQL_PASSWORD: obrafirmada_dev_password
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -36,6 +36,7 @@ services:
       JWT_EXPIRES_IN: 24h
       BCRYPT_ROUNDS: 10
       PORT: 3001
+      GEOFENCING_ENABLED: "false"
     ports:
       - "3001:3001"
     depends_on:
@@ -43,7 +44,7 @@ services:
         condition: service_healthy
     networks:
       - obrafirmada_network
-    command: npm run start:prod
+    command: sh -c "npx prisma migrate deploy && npm run start:prod"
 
   # Servicio Frontend Next.js
   frontend:

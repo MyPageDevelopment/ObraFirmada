@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PDFDocument, PDFFont, PageSizes, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, PDFFont, PDFPage, PageSizes, StandardFonts, rgb } from 'pdf-lib';
 import { Readable } from 'node:stream';
 
 export interface EquipmentItem {
@@ -17,6 +17,10 @@ export interface EquipmentDeliveryPdfInput {
   deliveredAt: Date;
   signatureBase64: string;
   equipmentItems: EquipmentItem[];
+  isException?: boolean;
+  witnessRut?: string;
+  witnessFullName?: string;
+  witnessSignatureBase64?: string;
 }
 
 export interface GeneratedPdfDocument {
@@ -115,8 +119,35 @@ export class EquipmentDeliveryPdfService {
     }
 
     cursorY -= 8;
-    drawText('Firma manuscrita digital', { font: boldFont, size: 13, color: rgb(0.08, 0.16, 0.28) });
+    drawText('Firma del Trabajador', { font: boldFont, size: 11, color: rgb(0.08, 0.16, 0.28) });
     await this.drawSignature(pdfDoc, page, input.signatureBase64, margin, cursorY - 120, 220, 100);
+
+    if (input.isException) {
+      page.drawText('VALIDADO POR TESTIGO DE FE (EXCEPCIÓN)', {
+        x: margin + 250,
+        y: cursorY + 4,
+        size: 9,
+        font: boldFont,
+        color: rgb(0.85, 0.26, 0.26),
+      });
+      page.drawText(`Testigo: ${input.witnessFullName ?? 'N/A'}`, {
+        x: margin + 250,
+        y: cursorY - 12,
+        size: 9,
+        font: regularFont,
+        color: rgb(0.12, 0.12, 0.12),
+      });
+      page.drawText(`RUT: ${input.witnessRut ?? 'N/A'}`, {
+        x: margin + 250,
+        y: cursorY - 26,
+        size: 9,
+        font: regularFont,
+        color: rgb(0.12, 0.12, 0.12),
+      });
+      if (input.witnessSignatureBase64) {
+        await this.drawSignature(pdfDoc, page, input.witnessSignatureBase64, margin + 250, cursorY - 130, 200, 80);
+      }
+    }
 
     const pdfBytes = await pdfDoc.save();
     const pdfBuffer = Buffer.from(pdfBytes);

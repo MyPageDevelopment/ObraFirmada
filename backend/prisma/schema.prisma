@@ -30,6 +30,9 @@ model User {
   /// Relacion: Un usuario puede tener multiples logs de identidad
   identityLogs IdentityLog[]
 
+  /// Relacion: Un usuario puede tener multiples actas de entrega de EPP
+  equipmentDeliveries EquipmentDelivery[]
+
   @@index([rut])
   @@index([createdAt])
 }
@@ -100,6 +103,19 @@ model EquipmentDelivery {
   /// Marca temporal de la firma del acta
   signedAt DateTime?
 
+  /// Campos para Geofencing (coordenadas GPS de la tablet)
+  latitude  Float?
+  longitude Float?
+
+  /// Campos para firma por excepción (Testigo de Fe)
+  isException            Boolean   @default(false)
+  witnessRut             String?   @db.VarChar(12)
+  witnessFullName        String?   @db.VarChar(160)
+  witnessSignatureBase64 String?   @db.LongText
+
+  /// Estado de entrega de la notificación
+  notificationStatus String @db.VarChar(20) @default("PENDING")
+
   /// Relacion 1:1 con el registro de integridad documental
   documentIntegrity DocumentIntegrity?
 
@@ -135,4 +151,37 @@ model DocumentIntegrity {
 
   @@index([sha256])
   @@index([createdAt])
+}
+
+/// Modelo GroupTalk: Registro de charla de seguridad grupal
+model GroupTalk {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(200)
+  speakerName String   @db.VarChar(160)
+  heldAt      DateTime @default(now())
+  latitude    Float?
+  longitude   Float?
+  attendees   GroupTalkAttendee[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([heldAt])
+}
+
+/// Modelo GroupTalkAttendee: Asistente a una charla grupal
+model GroupTalkAttendee {
+  id                   String     @id @default(cuid())
+  groupTalkId          String
+  groupTalk            GroupTalk  @relation(fields: [groupTalkId], references: [id], onDelete: Cascade)
+  rut                  String     @db.VarChar(12)
+  fullName             String     @db.VarChar(160)
+  validatedAt          DateTime   @default(now())
+  biometricType        String     @db.VarChar(20) // FACE or PALM
+  isException          Boolean    @default(false)
+  witnessRut           String?    @db.VarChar(12)
+  witnessFullName      String?    @db.VarChar(160)
+  witnessSignatureBase64 String?  @db.LongText
+
+  @@index([groupTalkId])
+  @@index([rut])
 }

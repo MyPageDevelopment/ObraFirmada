@@ -5,3 +5,4 @@
 
 export { PrismaService } from './prisma.service';
 export { CryptographyService } from './cryptography.service';
+export { NotificationService } from './notification.service';

@@ -1,11 +1,11 @@
 /**
  * Pantalla de Entrega de EPP
- * Flujo: Datos del trabajador → Selección de catálogo → Firma → Biometría → Descarga del PDF
+ * Flujo: Datos del trabajador → Selección de catálogo → Firma → Biometría o Bypass Testigo → Descarga del PDF o guardado local
  */
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { BiometricCaptureComponent } from '@/components/enrollment/biometric-capture';
 import { SignatureCaptureComponent } from '@/components/enrollment/signature-capture';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/lib/services/equipment-delivery-api.service';
 import { formatChileanRut, isValidChileanRut } from '@/lib/utils/rut-validator';
 
-type DeliveryStep = 'form' | 'signature' | 'biometric' | 'processing' | 'success' | 'error';
+type DeliveryStep = 'form' | 'signature' | 'biometric' | 'witness' | 'processing' | 'success' | 'error';
 
 interface SelectedCatalogItem extends EquipmentItemPayload {
   selected: boolean;
@@ -30,6 +30,10 @@ interface DeliveryState {
   sha256?: string | null;
   equipmentDeliveryId?: string | null;
   documentIntegrityId?: string | null;
+  isException?: boolean;
+  witnessRut?: string;
+  witnessFullName?: string;
+  witnessSignatureBase64?: string;
 }
 
 const initialCatalog: SelectedCatalogItem[] = [
@@ -51,6 +55,46 @@ export default function EquipmentDeliveryPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Network & GPS status
+  const [online, setOnline] = useState(true);
+  const [gpsBlocked, setGpsBlocked] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOnline(navigator.onLine);
+      const on = () => setOnline(true);
+      const off = () => setOnline(false);
+      window.addEventListener('online', on);
+      window.addEventListener('offline', off);
+
+      // GPS validation (Sprint 4)
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            setGpsBlocked(false);
+          },
+          (err) => {
+            console.error('GPS error:', err);
+            setGpsBlocked(true);
+          },
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+      } else {
+        setGpsBlocked(true);
+      }
+
+      return () => {
+        window.removeEventListener('online', on);
+        window.removeEventListener('offline', off);
+      };
+    }
+  }, []);
 
   const selectedItems = useMemo(
     () => deliveryState.equipmentItems.filter((item) => item.selected),
@@ -100,6 +144,7 @@ export default function EquipmentDeliveryPage() {
     setStep('biometric');
   };
 
+  // Normal biometric scan flow
   const handleBiometricCapture = async (imageBase64: string) => {
     setIsLoading(true);
     setStep('processing');
@@ -110,14 +155,53 @@ export default function EquipmentDeliveryPage() {
         throw new Error('Falta la firma manuscrita para continuar');
       }
 
-      const response = await equipmentDeliveryApi.createEquipmentDeliveryDocument({
+      const payload = {
         rut: formatChileanRut(deliveryState.rut),
         workerFullName: deliveryState.workerFullName,
         biometricType: deliveryState.biometricType,
         biometricImageBase64: imageBase64,
         signatureBase64: deliveryState.signatureBase64,
-        equipmentItems: selectedItems,
-      });
+        equipmentItems: selectedItems.map(({ name, quantity, unit, description, code }) => ({
+          name,
+          quantity,
+          unit,
+          description,
+          code,
+        })),
+        latitude: coords?.latitude || undefined,
+        longitude: coords?.longitude || undefined,
+        isException: false,
+      };
+
+      // Offline storage handling (Sprint 3)
+      if (!online) {
+        const { IndexedDbService } = require('@/lib/utils/indexed-db.service');
+        await IndexedDbService.saveDelivery({
+          userId: 'offline-pending',
+          rut: payload.rut,
+          workerFullName: payload.workerFullName,
+          equipmentItems: payload.equipmentItems,
+          signatureBase64: payload.signatureBase64,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          isException: false,
+          deliveredAt: new Date().toISOString(),
+        });
+
+        alert('📦 Registro guardado localmente en IndexedDB por falta de conexión. Se sincronizará automáticamente al retornar online.');
+        
+        setDeliveryState((prev) => ({
+          ...prev,
+          biometricImageBase64: imageBase64,
+          sha256: 'PENDIENTE_ONLINE',
+          equipmentDeliveryId: 'PENDIENTE_ONLINE',
+          documentIntegrityId: 'PENDIENTE_ONLINE',
+        }));
+        setStep('success');
+        return;
+      }
+
+      const response = await equipmentDeliveryApi.createEquipmentDeliveryDocument(payload);
 
       const pdfUrl = URL.createObjectURL(response.pdfBlob);
       const anchor = document.createElement('a');
@@ -136,8 +220,105 @@ export default function EquipmentDeliveryPage() {
         documentIntegrityId: response.documentIntegrityId,
       }));
       setStep('success');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'No fue posible generar el documento';
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'No fue posible generar el documento';
+      setError(message);
+      setStep('error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Witness bypass confirm handler
+  const handleConfirmWitness = async (witnessRut: string, witnessName: string, witnessSignatureBase64: string) => {
+    setIsLoading(true);
+    setStep('processing');
+    setError(null);
+
+    try {
+      if (!deliveryState.signatureBase64) {
+        throw new Error('Falta la firma manuscrita para continuar');
+      }
+
+      const payload = {
+        rut: formatChileanRut(deliveryState.rut),
+        workerFullName: deliveryState.workerFullName,
+        biometricType: deliveryState.biometricType,
+        biometricImageBase64: '',
+        signatureBase64: deliveryState.signatureBase64,
+        equipmentItems: selectedItems.map(({ name, quantity, unit, description, code }) => ({
+          name,
+          quantity,
+          unit,
+          description,
+          code,
+        })),
+        latitude: coords?.latitude || undefined,
+        longitude: coords?.longitude || undefined,
+        isException: true,
+        witnessRut: formatChileanRut(witnessRut),
+        witnessFullName: witnessName,
+        witnessSignatureBase64,
+      };
+
+      // Offline storage handling (Sprint 3)
+      if (!online) {
+        const { IndexedDbService } = require('@/lib/utils/indexed-db.service');
+        await IndexedDbService.saveDelivery({
+          userId: 'offline-pending',
+          rut: payload.rut,
+          workerFullName: payload.workerFullName,
+          equipmentItems: payload.equipmentItems,
+          signatureBase64: payload.signatureBase64,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          isException: true,
+          witnessRut: payload.witnessRut,
+          witnessFullName: payload.witnessFullName,
+          witnessSignatureBase64: payload.witnessSignatureBase64,
+          deliveredAt: new Date().toISOString(),
+        });
+
+        alert('📦 Registro de excepción guardado localmente en IndexedDB. Se sincronizará automáticamente al retornar online.');
+
+        setDeliveryState((prev) => ({
+          ...prev,
+          sha256: 'PENDIENTE_ONLINE',
+          equipmentDeliveryId: 'PENDIENTE_ONLINE',
+          documentIntegrityId: 'PENDIENTE_ONLINE',
+          isException: true,
+          witnessRut: payload.witnessRut,
+          witnessFullName: payload.witnessFullName,
+          witnessSignatureBase64: payload.witnessSignatureBase64,
+        }));
+        setStep('success');
+        return;
+      }
+
+      const response = await equipmentDeliveryApi.createEquipmentDeliveryDocument(payload);
+
+      const pdfUrl = URL.createObjectURL(response.pdfBlob);
+      const anchor = document.createElement('a');
+      anchor.href = pdfUrl;
+      anchor.download = 'acta-entrega-epp.pdf';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(pdfUrl);
+
+      setDeliveryState((prev) => ({
+        ...prev,
+        sha256: response.sha256,
+        equipmentDeliveryId: response.equipmentDeliveryId,
+        documentIntegrityId: response.documentIntegrityId,
+        isException: true,
+        witnessRut: payload.witnessRut,
+        witnessFullName: payload.witnessFullName,
+        witnessSignatureBase64: payload.witnessSignatureBase64,
+      }));
+      setStep('success');
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'No fue posible registrar la entrega';
       setError(message);
       setStep('error');
     } finally {
@@ -176,13 +357,34 @@ export default function EquipmentDeliveryPage() {
               min={1}
               value={item.quantity}
               onChange={(event) => handleQuantityChange(index, Number(event.target.value))}
-              className="w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900"
             />
           </div>
         </button>
       ))}
     </div>
   );
+
+  // GPS Blocker view (Sprint 4)
+  if (gpsBlocked) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
+        <div className="max-w-md rounded-[2rem] border border-rose-500/30 bg-rose-950/20 p-8 text-center backdrop-blur-xl">
+          <p className="text-4xl">⚠️</p>
+          <h1 className="mt-4 text-2xl font-black text-rose-300">Ubicación GPS Requerida</h1>
+          <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+            Para garantizar la validez legal y geofencing del acta de entrega, debe habilitar el acceso GPS en su navegador.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 w-full rounded-full bg-rose-500 py-3 font-semibold text-white hover:bg-rose-400 transition"
+          >
+            Reintentar Localización
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'signature') {
     return (
@@ -200,6 +402,17 @@ export default function EquipmentDeliveryPage() {
         onCapture={handleBiometricCapture}
         biometricType={deliveryState.biometricType}
         isLoading={isLoading}
+        onWitnessBypass={() => setStep('witness')}
+      />
+    );
+  }
+
+  if (step === 'witness') {
+    return (
+      <WitnessBypassComponent
+        onConfirm={handleConfirmWitness}
+        onBack={() => setStep('biometric')}
+        isLoading={isLoading}
       />
     );
   }
@@ -210,10 +423,16 @@ export default function EquipmentDeliveryPage() {
         <div className="mx-auto flex min-h-screen max-w-4xl items-center">
           <div className="w-full overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 shadow-2xl backdrop-blur-xl">
             <div className="border-b border-white/10 bg-emerald-500/20 px-8 py-8">
-              <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">Documento emitido</p>
-              <h1 className="mt-2 text-4xl font-black">Acta de entrega certificada</h1>
+              <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">
+                {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Pendiente en local' : 'Documento emitido'}
+              </p>
+              <h1 className="mt-2 text-4xl font-black">
+                {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Entrega Registrada Localmente' : 'Acta de entrega certificada'}
+              </h1>
               <p className="mt-3 max-w-2xl text-white/80">
-                El PDF se descargó correctamente y la integridad quedó registrada en MySQL para auditoría.
+                {deliveryState.sha256 === 'PENDIENTE_ONLINE'
+                  ? 'El acta ha sido guardada en la base de datos local (IndexedDB). Se emitirá al servidor una vez recuperada la conexión.'
+                  : 'El PDF se descargó correctamente y la integridad quedó registrada en MySQL para auditoría.'}
               </p>
             </div>
 
@@ -224,6 +443,7 @@ export default function EquipmentDeliveryPage() {
                   <div className="flex justify-between gap-4"><dt>Trabajador</dt><dd className="font-medium text-white">{deliveryState.workerFullName}</dd></div>
                   <div className="flex justify-between gap-4"><dt>RUT</dt><dd className="font-medium text-white">{formatChileanRut(deliveryState.rut)}</dd></div>
                   <div className="flex justify-between gap-4"><dt>EPP seleccionados</dt><dd className="font-medium text-white">{selectedItems.length}</dd></div>
+                  <div className="flex justify-between gap-4"><dt>Bypass Testigo</dt><dd className="font-medium text-white">{deliveryState.isException ? 'SÍ' : 'NO'}</dd></div>
                   <div className="flex justify-between gap-4"><dt>SHA-256</dt><dd className="font-mono text-xs text-emerald-200 break-all">{deliveryState.sha256}</dd></div>
                 </dl>
               </div>
@@ -291,10 +511,17 @@ export default function EquipmentDeliveryPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.16)_0%,_rgba(15,23,42,0.98)_42%,_#020617_100%)] px-4 py-6 text-white">
       <div className="mx-auto max-w-7xl">
+        {/* Offline notification banner */}
+        {!online && (
+          <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">
+            ⚠️ <strong>Modo Offline Activo:</strong> Se detectó pérdida de red. Las firmas se procesarán localmente en IndexedDB.
+          </div>
+        )}
+
         <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 shadow-2xl backdrop-blur-xl">
           <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="p-8 lg:p-10">
-              <p className="text-sm uppercase tracking-[0.35em] text-amber-300">Sprint 2 · Documento legal</p>
+              <p className="text-sm uppercase tracking-[0.35em] text-amber-300">Sprint 4 · Testigo y Geofencing</p>
               <h1 className="mt-4 text-4xl font-black leading-tight lg:text-6xl">
                 Entrega de EPP con validación biométrica e integridad SHA-256
               </h1>
@@ -374,9 +601,9 @@ export default function EquipmentDeliveryPage() {
                   </label>
 
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-200">Ruta del flujo</span>
+                    <span className="text-sm font-medium text-slate-200">Ubicación GPS</span>
                     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                      Datos → Catálogo → Firma → Biometría → PDF firmado
+                      {coords ? `Lat: ${coords.latitude.toFixed(4)} | Lon: ${coords.longitude.toFixed(4)}` : 'Obteniendo GPS...'}
                     </div>
                   </div>
                 </div>
@@ -444,5 +671,187 @@ export default function EquipmentDeliveryPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+interface WitnessBypassProps {
+  onConfirm: (witnessRut: string, witnessName: string, witnessSignatureBase64: string) => void;
+  onBack: () => void;
+  isLoading: boolean;
+}
+
+function WitnessBypassComponent({ onConfirm, onBack, isLoading }: WitnessBypassProps) {
+  const [witnessRut, setWitnessRut] = useState('');
+  const [witnessName, setWitnessName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+  }, []);
+
+  const getPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const pt = getPoint(e);
+    if (!pt) return;
+    canvas.setPointerCapture(e.pointerId);
+    ctx.beginPath();
+    ctx.moveTo(pt.x, pt.y);
+    setIsDrawing(true);
+    setHasSignature(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const pt = getPoint(e);
+    if (!pt) return;
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.releasePointerCapture(e.pointerId);
+    setIsDrawing(false);
+  };
+
+  const handleClear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+  };
+
+  const handleConfirm = () => {
+    setError(null);
+    if (!witnessName.trim() || !witnessRut.trim() || !isValidChileanRut(witnessRut)) {
+      setError('Por favor ingrese el nombre del Testigo de Fe y un RUT válido.');
+      return;
+    }
+    if (!hasSignature || !canvasRef.current) {
+      setError('El Testigo de Fe debe dibujar su firma.');
+      return;
+    }
+
+    const signatureBase64 = canvasRef.current.toDataURL('image/png').split(',')[1];
+    onConfirm(witnessRut, witnessName, signatureBase64);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 flex items-center justify-center p-4 text-white">
+      <div className="rounded-[2rem] border border-white/10 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-xl max-w-2xl w-full">
+        <span className="text-xs font-bold uppercase tracking-[0.25em] text-rose-400">Excepción</span>
+        <h1 className="mt-2 text-3xl font-black">Bypass por Testigo de Fe</h1>
+        <p className="mt-2 text-sm text-slate-300 leading-normal">
+          Ingrese los datos del prevencionista o supervisor autorizado que actúa como Testigo de Fe para esta entrega.
+        </p>
+
+        <div className="mt-6 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm text-slate-300">
+              Nombre Testigo
+              <input
+                type="text"
+                value={witnessName}
+                onChange={(e) => setWitnessName(e.target.value)}
+                placeholder="Ej: Mario Rojas"
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-slate-300">
+              RUT Testigo
+              <input
+                type="text"
+                value={witnessRut}
+                onChange={(e) => setWitnessRut(e.target.value.toUpperCase())}
+                onBlur={() => {
+                  try {
+                    setWitnessRut(formatChileanRut(witnessRut));
+                  } catch {}
+                }}
+                placeholder="Ej: 12.345.678-9"
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+              />
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-sm font-semibold text-slate-300">Firma del Testigo de Fe</span>
+            <div className="overflow-hidden rounded-xl border border-white/10 bg-white">
+              <canvas
+                ref={canvasRef}
+                width={600}
+                height={200}
+                className="w-full h-40 touch-none cursor-crosshair"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-4 pt-2">
+            <button
+              onClick={handleConfirm}
+              disabled={isLoading}
+              className="flex-1 rounded-full bg-rose-500 py-3 font-semibold hover:bg-rose-400 transition"
+            >
+              {isLoading ? '⏳ Registrando...' : 'Confirmar Autorización'}
+            </button>
+            <button
+              onClick={handleClear}
+              className="rounded-full border border-white/10 bg-slate-800 px-6 py-3 font-semibold hover:bg-slate-700 transition"
+            >
+              🧹 Limpiar
+            </button>
+            <button
+              onClick={onBack}
+              className="rounded-full border border-white/10 bg-slate-800 px-6 py-3 font-semibold hover:bg-slate-700 transition"
+            >
+              Atrás
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

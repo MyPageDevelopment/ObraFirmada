@@ -39,6 +39,10 @@ export class BiometricVerificationService {
       throw new InternalServerErrorException('El registro biometrico no contiene salt verificable');
     }
 
+    if (!dto.biometricImageBase64) {
+      throw new BadRequestException('La imagen biométrica es requerida');
+    }
+
     const storedHash = this.cryptographyService.decryptSensitiveData(
       latestLog.encryptedBiometricVector,
       encryptionKey,

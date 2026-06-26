@@ -16,7 +16,7 @@ export class PrismaDocumentIntegrityRepository implements IDocumentIntegrityRepo
         equipmentDeliveryId: data.equipmentDeliveryId,
         algorithm: data.algorithm,
         sha256: data.sha256,
-        metadata: (data.metadata ?? null) as Prisma.InputJsonValue | null,
+        metadata: (data.metadata === null ? Prisma.JsonNull : data.metadata) as Prisma.InputJsonValue,
       },
     });
   }
