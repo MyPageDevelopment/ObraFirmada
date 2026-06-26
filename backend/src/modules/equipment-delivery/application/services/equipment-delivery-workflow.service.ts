@@ -1,10 +1,11 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Readable } from 'node:stream';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BiometricVerificationService } from './biometric-verification.service';
 import { EquipmentDeliveryPdfService } from './equipment-delivery-pdf.service';
 import { DocumentIntegrityService } from './document-integrity.service';
+import { PrismaService } from '@shared/services/prisma.service';
 import {
   CreateEquipmentDeliveryDto,
   CreateEquipmentDeliveryResponseDto,
@@ -27,6 +28,7 @@ export class EquipmentDeliveryWorkflowService {
     private biometricVerificationService: BiometricVerificationService,
     private equipmentDeliveryPdfService: EquipmentDeliveryPdfService,
     private documentIntegrityService: DocumentIntegrityService,
+    private prisma: PrismaService,
     @Inject('IEquipmentDeliveryRepository')
     private equipmentDeliveryRepository: IEquipmentDeliveryRepository,
     @Inject('IDocumentIntegrityRepository')
@@ -146,6 +148,127 @@ export class EquipmentDeliveryWorkflowService {
     };
   }
 
+  async createDeliveryBatch(dtos: CreateEquipmentDeliveryDto[]): Promise<CreateEquipmentDeliveryResponseDto[]> {
+    const results: CreateEquipmentDeliveryResponseDto[] = [];
+
+    // Prisma Transaction ensures ACID properties (all-or-nothing batch processing)
+    await this.prisma.$transaction(async (tx) => {
+      for (const dto of dtos) {
+        // 1. Geofencing Validation
+        const GEOFENCING_ENABLED = process.env.GEOFENCING_ENABLED !== 'false';
+        const OFFICIAL_LAT = process.env.GEOFENCING_LAT ? parseFloat(process.env.GEOFENCING_LAT) : -33.4489;
+        const OFFICIAL_LON = process.env.GEOFENCING_LON ? parseFloat(process.env.GEOFENCING_LON) : -70.6693;
+        const MAX_RADIUS = process.env.GEOFENCING_RADIUS ? parseFloat(process.env.GEOFENCING_RADIUS) : 500;
+
+        if (GEOFENCING_ENABLED && dto.latitude !== undefined && dto.latitude !== null && dto.longitude !== undefined && dto.longitude !== null) {
+          const distance = this.calculateDistance(dto.latitude, dto.longitude, OFFICIAL_LAT, OFFICIAL_LON);
+          if (distance > MAX_RADIUS) {
+            throw new BadRequestException(
+              `Ubicación fuera del perímetro de la obra (${Math.round(distance)}m > ${MAX_RADIUS}m)`,
+            );
+          }
+        }
+
+        // 2. Resolve User & Validation
+        let userId: string;
+        let verified = false;
+        let verifiedAt: Date | null = null;
+        let biometricType: 'FACE' | 'PALM' = dto.biometricType || 'FACE';
+
+        if (dto.isException) {
+          if (!this.cryptographyService.isValidChileanRut(dto.rut)) {
+            throw new BadRequestException('RUT chileno inválido');
+          }
+          const normalizedRut = this.cryptographyService.normalizeChileanRut(dto.rut);
+          const user = await tx.user.findUnique({ where: { rut: normalizedRut } });
+          if (!user) {
+            throw new BadRequestException('El trabajador debe estar enrolado previamente para registrar una entrega');
+          }
+          userId = user.id;
+          verified = true;
+        } else {
+          const verification = await this.biometricVerificationService.verify1To1(dto);
+          userId = verification.userId;
+          verified = verification.verified;
+          verifiedAt = verification.verifiedAt;
+          biometricType = verification.biometricType;
+        }
+
+        const deliveredAt = new Date();
+
+        // 3. Persist delivery details in tx transaction context
+        const delivery = await tx.equipmentDelivery.create({
+          data: {
+            userId,
+            rut: this.cryptographyService.normalizeChileanRut(dto.rut),
+            workerFullName: dto.workerFullName,
+            equipmentItems: dto.equipmentItems as any,
+            signatureBase64: dto.signatureBase64,
+            deliveredAt,
+            biometricValidatedAt: verifiedAt,
+            signedAt: deliveredAt,
+            latitude: dto.latitude ?? null,
+            longitude: dto.longitude ?? null,
+            isException: dto.isException ?? false,
+            witnessRut: dto.witnessRut ? this.cryptographyService.normalizeChileanRut(dto.witnessRut) : null,
+            witnessFullName: dto.witnessFullName ?? null,
+            witnessSignatureBase64: dto.witnessSignatureBase64 ?? null,
+            notificationStatus: 'PENDING',
+          },
+        });
+
+        // 4. Generate PDF & stamp it
+        const pdfDocument = await this.equipmentDeliveryPdfService.generate({
+          workerFullName: dto.workerFullName,
+          rut: this.cryptographyService.normalizeChileanRut(dto.rut),
+          biometricType,
+          deliveredAt,
+          signatureBase64: dto.signatureBase64,
+          equipmentItems: dto.equipmentItems,
+          isException: dto.isException ?? false,
+          witnessRut: dto.witnessRut,
+          witnessFullName: dto.witnessFullName,
+          witnessSignatureBase64: dto.witnessSignatureBase64,
+        });
+
+        const integrity = await this.documentIntegrityService.sealPdf(pdfDocument.pdfBuffer);
+
+        // 5. Save DocumentIntegrity in transaction
+        const documentIntegrity = await tx.documentIntegrity.create({
+          data: {
+            equipmentDeliveryId: delivery.id,
+            algorithm: 'SHA-256',
+            sha256: integrity.sha256,
+            metadata: {
+              rut: this.cryptographyService.normalizeChileanRut(dto.rut),
+              workerFullName: dto.workerFullName,
+              itemCount: dto.equipmentItems.length,
+              generatedAt: deliveredAt.toISOString(),
+              isException: dto.isException ?? false,
+            },
+          },
+        });
+
+        results.push({
+          equipmentDeliveryId: delivery.id,
+          documentIntegrityId: documentIntegrity.id,
+          sha256: integrity.sha256,
+          verified,
+          verifiedAt: verifiedAt ?? deliveredAt,
+          deliveredAt,
+        });
+
+        this.eventEmitter.emit('delivery.created', {
+          deliveryId: delivery.id,
+          workerRut: delivery.rut,
+          workerFullName: delivery.workerFullName,
+        });
+      }
+    });
+
+    return results;
+  }
+
   async listDeliveries(options: {
     skip: number;
     take: number;
@@ -197,6 +320,14 @@ export class EquipmentDeliveryWorkflowService {
 
   async verifyBiometricOnly(dto: VerifyBiometricDto): Promise<BiometricVerificationResponseDto> {
     return this.biometricVerificationService.verify1To1(dto);
+  }
+
+  async updateNotificationStatus(deliveryId: string, status: string) {
+    const delivery = await this.equipmentDeliveryRepository.findById(deliveryId);
+    if (!delivery) {
+      throw new NotFoundException(`No se encontró el acta de entrega con ID ${deliveryId}`);
+    }
+    return this.equipmentDeliveryRepository.updateStatus(deliveryId, status);
   }
 
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

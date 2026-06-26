@@ -17,6 +17,7 @@ export function SignatureCaptureComponent({ onConfirm, onBack, isLoading = false
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +55,11 @@ export function SignatureCaptureComponent({ onConfirm, onBack, isLoading = false
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!acceptedPrivacy) {
+      setError('Debes aceptar el Aviso de Privacidad (Ley 19.628) para poder firmar');
+      return;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) {
@@ -73,7 +79,7 @@ export function SignatureCaptureComponent({ onConfirm, onBack, isLoading = false
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) {
+    if (!isDrawing || !acceptedPrivacy) {
       return;
     }
 
@@ -121,6 +127,11 @@ export function SignatureCaptureComponent({ onConfirm, onBack, isLoading = false
       return;
     }
 
+    if (!acceptedPrivacy) {
+      setError('Debes aceptar el Aviso de Privacidad (Ley 19.628) para poder firmar');
+      return;
+    }
+
     if (!hasSignature) {
       setError('Debes firmar antes de continuar');
       return;
@@ -131,62 +142,79 @@ export function SignatureCaptureComponent({ onConfirm, onBack, isLoading = false
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full overflow-hidden">
-        <div className="bg-secondary text-white px-6 py-8 border-b-4 border-orange-600">
-          <h1 className="text-3xl font-bold mb-2">✍️ Firma Manuscrita</h1>
-          <p className="text-sm opacity-90">Dibuja tu firma dentro del recuadro</p>
+    <div className="bg-bg-card rounded-2xl shadow-2xl max-w-3xl w-full border-4 border-border overflow-hidden text-text-main select-none">
+      <div className="bg-secondary text-white px-6 py-8 border-b-4 border-border">
+        <h1 className="text-3xl font-black mb-2">✍️ Firma Manuscrita</h1>
+        <p className="text-sm opacity-90 font-bold">Dibuja tu firma dentro del recuadro</p>
+      </div>
+
+      <div className="px-6 py-6 space-y-4">
+        <div className="bg-bg-card border-4 border-border p-4 rounded-xl text-sm text-text-main font-bold">
+          ℹ️ Usa el mouse o tu dedo para firmar. Tu firma se guardará como imagen cifrada.
         </div>
 
-        <div className="px-6 py-6 space-y-4">
-          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded text-sm text-amber-800">
-            Usa el mouse o tu dedo para firmar. Tu firma se guardara como imagen cifrada.
-          </div>
-
-          <div className="border-2 border-dashed border-gray-300 rounded-lg bg-white">
-            <canvas
-              ref={canvasRef}
-              width={720}
-              height={320}
-              className="w-full h-64 md:h-72 touch-none"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
-            />
-          </div>
-
-          {error && <p className="text-sm text-danger">❌ {error}</p>}
+        {/* Checkbox de Privacidad Ley 19.628 */}
+        <div className="flex items-center space-x-4 cursor-pointer py-5 px-6 bg-bg-card rounded-2xl border-4 border-border">
+          <input
+            type="checkbox"
+            id="privacy-terms-checkbox"
+            checked={acceptedPrivacy}
+            onChange={(e) => {
+              setAcceptedPrivacy(e.target.checked);
+              if (e.target.checked) {
+                setError(null);
+              }
+            }}
+            className="w-10 h-10 flex-shrink-0 border-4 border-border text-secondary focus:ring-secondary accent-secondary cursor-pointer"
+          />
+          <label htmlFor="privacy-terms-checkbox" className="text-base md:text-lg text-text-main cursor-pointer select-none leading-relaxed">
+            <span className="font-black">Aviso de Privacidad (Ley 19.628):</span> Entiendo y acepto que mi firma manuscrita será recopilada y almacenada de forma segura junto con mi registro de identidad para efectos de verificación legal de documentos laborales.
+          </label>
         </div>
 
-        <div className="bg-gray-100 px-6 py-4 flex flex-wrap gap-3 justify-between">
-          <div className="flex gap-3">
-            {onBack && (
-              <button
-                onClick={onBack}
-                disabled={isLoading}
-                className="px-5 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                ⬅️ Volver
-              </button>
-            )}
+        <div className={`border-4 border-dashed border-border rounded-xl bg-white transition duration-200 ${!acceptedPrivacy ? 'opacity-40 cursor-not-allowed select-none' : ''}`}>
+          <canvas
+            ref={canvasRef}
+            width={720}
+            height={320}
+            className={`w-full h-64 md:h-72 touch-none ${!acceptedPrivacy ? 'pointer-events-none' : 'cursor-crosshair'}`}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          />
+        </div>
+
+        {error && <p className="text-sm text-danger font-black">❌ {error}</p>}
+      </div>
+
+      <div className="bg-bg-card px-8 py-6 flex flex-col sm:flex-row gap-4 justify-between border-t-4 border-border">
+        <div className="flex gap-4">
+          {onBack && (
             <button
-              onClick={handleClear}
+              onClick={onBack}
               disabled={isLoading}
-              className="px-5 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+              className="px-8 py-4.5 border-4 border-border text-text-main bg-bg-card rounded-xl font-bold text-lg hover:bg-bg-main transition active:scale-95 disabled:opacity-50"
             >
-              🧹 Limpiar
+              ⬅️ Volver
             </button>
-          </div>
-
+          )}
           <button
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className="px-6 py-2 bg-success text-white rounded-lg font-semibold hover:bg-green-600 transition disabled:opacity-50"
+            onClick={handleClear}
+            disabled={isLoading || !acceptedPrivacy}
+            className="px-8 py-4.5 border-4 border-border text-text-main bg-bg-card rounded-xl font-bold text-lg hover:bg-bg-main transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? '⏳ Guardando...' : '✅ Confirmar Firma'}
+            🧹 Limpiar
           </button>
         </div>
+
+        <button
+          onClick={handleConfirm}
+          disabled={isLoading || !acceptedPrivacy || !hasSignature}
+          className="px-10 py-5 bg-success text-white rounded-xl font-black text-xl hover:bg-green-600 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-4 border-border"
+        >
+          {isLoading ? '⏳ Guardando...' : '✅ Confirmar Firma'}
+        </button>
       </div>
     </div>
   );

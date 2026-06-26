@@ -76,6 +76,8 @@ export class EnrollmentService {
           capturedAt: latestLog.capturedAt,
         };
       }
+
+      throw new BadRequestException('El trabajador ya se encuentra enrolado en el sistema');
     }
 
     // Procesamiento seguro del vector biometrico

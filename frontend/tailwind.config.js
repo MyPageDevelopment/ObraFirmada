@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,10 +9,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#1F2937',
-        secondary: '#FFA500',
-        danger: '#EF4444',
-        success: '#10B981',
+        primary: 'var(--color-primary)',
+        secondary: 'var(--color-secondary)',
+        success: 'var(--color-success)',
+        danger: 'var(--color-danger)',
+        warning: 'var(--color-warning)',
+        'bg-main': 'var(--color-bg-main)',
+        'bg-card': 'var(--color-bg-card)',
+        'text-main': 'var(--color-text-main)',
+        'text-muted': 'var(--color-text-muted)',
+        border: 'var(--color-border)',
       },
     },
   },

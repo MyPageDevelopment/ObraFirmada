@@ -2,6 +2,32 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+:root {
+  --color-primary: #000000;
+  --color-secondary: #0D47A1;
+  --color-success: #388E3C;
+  --color-danger: #D32F2F;
+  --color-warning: #EF6C00;
+  --color-bg-main: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-text-main: #000000;
+  --color-text-muted: #333333;
+  --color-border: #000000;
+}
+
+html.dark {
+  --color-primary: #FFFFFF;
+  --color-secondary: #1565C0;
+  --color-success: #4CAF50;
+  --color-danger: #E53935;
+  --color-warning: #FBC02D;
+  --color-bg-main: #000000;
+  --color-bg-card: #121212;
+  --color-text-main: #FFFFFF;
+  --color-text-muted: #E0E0E0;
+  --color-border: #FFFFFF;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -17,8 +43,8 @@ body {
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
-  color: #1f2937;
+  background-color: var(--color-bg-main);
+  color: var(--color-text-main);
 }
 
 /* Estilos para inputs */

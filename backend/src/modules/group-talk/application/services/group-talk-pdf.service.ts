@@ -134,11 +134,11 @@ export class GroupTalkPdfService {
     }
 
     const pdfBytes = await pdfDoc.save();
-    const pdfBuffer = Buffer.from(pdfBytes);
+    const pdfBuffer = Buffer.from(pdfBytes.buffer, pdfBytes.byteOffset, pdfBytes.byteLength);
 
     return {
       pdfBuffer,
-      pdfStream: Readable.from([pdfBuffer]),
+      pdfStream: Readable.from([pdfBytes]), // Stream bytes directly to avoid duplicate copies
     };
   }
 }

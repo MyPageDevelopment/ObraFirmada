@@ -123,10 +123,17 @@ export class EquipmentDeliveryPdfService {
     await this.drawSignature(pdfDoc, page, input.signatureBase64, margin, cursorY - 120, 220, 100);
 
     if (input.isException) {
-      page.drawText('VALIDADO POR TESTIGO DE FE (EXCEPCIÓN)', {
+      page.drawText('Firma validada bajo modalidad excepcional', {
+        x: margin + 250,
+        y: cursorY + 14,
+        size: 8,
+        font: boldFont,
+        color: rgb(0.85, 0.26, 0.26),
+      });
+      page.drawText('mediante Testigo de Fe', {
         x: margin + 250,
         y: cursorY + 4,
-        size: 9,
+        size: 8,
         font: boldFont,
         color: rgb(0.85, 0.26, 0.26),
       });
@@ -150,11 +157,11 @@ export class EquipmentDeliveryPdfService {
     }
 
     const pdfBytes = await pdfDoc.save();
-    const pdfBuffer = Buffer.from(pdfBytes);
+    const pdfBuffer = Buffer.from(pdfBytes.buffer, pdfBytes.byteOffset, pdfBytes.byteLength);
 
     return {
       pdfBuffer,
-      pdfStream: Readable.from([pdfBuffer]),
+      pdfStream: Readable.from([pdfBytes]), // Stream bytes directly to avoid duplicate copies
     };
   }
 

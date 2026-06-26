@@ -14,12 +14,14 @@ import {
   Query,
   Res,
   StreamableFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
   CreateEquipmentDeliveryDto,
   BiometricVerificationResponseDto,
   VerifyBiometricDto,
+  CreateEquipmentDeliveryResponseDto,
 } from '../dtos/equipment-delivery.dto';
 import { EquipmentDeliveryWorkflowService } from '../../application/services/equipment-delivery-workflow.service';
 
@@ -100,10 +102,22 @@ export class EquipmentDeliveryController {
     response.setHeader('X-Document-Sha256', result.sha256);
     response.setHeader('X-Equipment-Delivery-Id', result.equipmentDeliveryId);
 
-    return new StreamableFile(result.sealedPdfBuffer, {
+    return new StreamableFile(result.pdfStream, {
       type: 'application/pdf',
       disposition: 'attachment; filename="acta-entrega-epp.pdf"',
     });
+  }
+
+  /**
+   * POST /api/equipment-delivery/batch
+   * Permite registrar multiples actas de entrega de EPP en un unico lote transaccional (ACID)
+   */
+  @Post('batch')
+  @HttpCode(HttpStatus.OK)
+  async createDocumentBatch(
+    @Body() dtos: CreateEquipmentDeliveryDto[],
+  ): Promise<CreateEquipmentDeliveryResponseDto[]> {
+    return this.equipmentDeliveryWorkflowService.createDeliveryBatch(dtos);
   }
 
   /**
@@ -116,5 +130,20 @@ export class EquipmentDeliveryController {
     @Body() dto: VerifyBiometricDto,
   ): Promise<BiometricVerificationResponseDto> {
     return this.equipmentDeliveryWorkflowService.verifyBiometricOnly(dto);
+  }
+
+  /**
+   * POST /api/equipment-delivery/webhook
+   * Webhook expuesto para que los proveedores actualicen el estado de entrega en tiempo real
+   */
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  async webhook(
+    @Body() body: { deliveryId: string; status: 'PENDING' | 'SENT' | 'FAILED' },
+  ) {
+    if (!body.deliveryId || !body.status) {
+      throw new BadRequestException('Falta deliveryId o status en el payload del Webhook');
+    }
+    return this.equipmentDeliveryWorkflowService.updateNotificationStatus(body.deliveryId, body.status);
   }
 }

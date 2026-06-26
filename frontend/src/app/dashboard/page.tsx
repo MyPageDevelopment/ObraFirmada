@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { equipmentDeliveryApi } from '@/lib/services/equipment-delivery-api.service';
 import { formatChileanRut, isValidChileanRut } from '@/lib/utils/rut-validator';
+import { ThemeHeader } from '@/components/common/ThemeHeader';
 
 interface DeliveryRecord {
   id: string;
@@ -125,26 +126,28 @@ export default function AdminDashboardPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#0f172a_0%,_#020617_100%)] p-6 text-white font-sans">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen flex flex-col bg-bg-main text-text-main transition-colors duration-150">
+      <ThemeHeader />
+
+      <div className="mx-auto max-w-7xl w-full p-4 flex-1 flex flex-col">
         {/* Header */}
         <header className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400">Panel de Control</span>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight">Dashboard de Entregas EPP</h1>
-            <p className="mt-1 text-slate-400">Auditoría, validación y exportación de comprobantes firmados.</p>
+            <span className="text-xs font-black uppercase tracking-[0.3em] text-secondary">Panel de Control</span>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-text-main">Dashboard de Entregas EPP</h1>
+            <p className="mt-1 text-text-muted font-bold">Auditoría, validación y exportación de comprobantes firmados.</p>
           </div>
           <div className="flex gap-3">
             <a
               href="/equipment-delivery"
-              className="rounded-full bg-slate-800 px-5 py-3 text-sm font-semibold text-white border border-white/10 hover:bg-slate-700 transition"
+              className="rounded-xl bg-secondary px-5 py-3 text-sm font-black text-white border-4 border-border hover:bg-interactive-hover transition active:scale-95 text-center flex items-center justify-center"
             >
               Nueva Entrega
             </a>
             <button
               onClick={handleDownloadZip}
               disabled={selectedIds.size === 0 || isExporting}
-              className="rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              className="rounded-xl bg-secondary px-5 py-3 text-sm font-black text-white border-4 border-border hover:bg-interactive-hover transition disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
             >
               {isExporting ? '⏳ Generando ZIP...' : `📦 Exportar ZIP (${selectedIds.size})`}
             </button>
@@ -153,39 +156,39 @@ export default function AdminDashboardPage() {
 
         {/* Stats Grid */}
         <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6 backdrop-blur-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Total Entregas</p>
-            <p className="mt-2 text-3xl font-black text-white">{stats.totalCount}</p>
-            <div className="mt-2 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-400" style={{ width: '100%' }}></div>
+          <div className="rounded-2xl border-4 border-border bg-bg-card p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">Total Entregas</p>
+            <p className="mt-2 text-3xl font-black text-text-main">{stats.totalCount}</p>
+            <div className="mt-2 h-3 w-full bg-bg-main border-2 border-border rounded-full overflow-hidden">
+              <div className="h-full bg-secondary rounded-full" style={{ width: '100%' }}></div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6 backdrop-blur-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Firmas Excepción (Testigo)</p>
-            <p className="mt-2 text-3xl font-black text-rose-400">{stats.exceptionCount}</p>
-            <div className="mt-2 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div className="rounded-2xl border-4 border-border bg-bg-card p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">Firmas Excepción (Testigo)</p>
+            <p className="mt-2 text-3xl font-black text-danger">{stats.exceptionCount}</p>
+            <div className="mt-2 h-3 w-full bg-bg-main border-2 border-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-rose-400"
+                className="h-full bg-danger rounded-full"
                 style={{ width: `${stats.totalCount ? (stats.exceptionCount / stats.totalCount) * 100 : 0}%` }}
               ></div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6 backdrop-blur-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Notificados</p>
-            <p className="mt-2 text-3xl font-black text-emerald-400">{stats.sentCount}</p>
-            <div className="mt-2 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div className="rounded-2xl border-4 border-border bg-bg-card p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">Notificados</p>
+            <p className="mt-2 text-3xl font-black text-success">{stats.sentCount}</p>
+            <div className="mt-2 h-3 w-full bg-bg-main border-2 border-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-400"
+                className="h-full bg-success rounded-full"
                 style={{ width: `${stats.totalCount ? (stats.sentCount / stats.totalCount) * 100 : 0}%` }}
               ></div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6 backdrop-blur-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Notificaciones Fallidas</p>
-            <p className="mt-2 text-3xl font-black text-amber-500">{stats.failedCount}</p>
-            <div className="mt-2 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div className="rounded-2xl border-4 border-border bg-bg-card p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">Notificaciones Fallidas</p>
+            <p className="mt-2 text-3xl font-black text-warning">{stats.failedCount}</p>
+            <div className="mt-2 h-3 w-full bg-bg-main border-2 border-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-amber-500"
+                className="h-full bg-warning rounded-full"
                 style={{ width: `${stats.totalCount ? (stats.failedCount / stats.totalCount) * 100 : 0}%` }}
               ></div>
             </div>
@@ -193,44 +196,44 @@ export default function AdminDashboardPage() {
         </section>
 
         {/* Filters */}
-        <section className="mb-8 rounded-2xl border border-white/5 bg-slate-900/20 p-6 backdrop-blur-md">
-          <h2 className="mb-4 text-lg font-semibold">Filtros de búsqueda</h2>
+        <section className="mb-8 rounded-2xl border-4 border-border bg-bg-card p-6">
+          <h2 className="mb-4 text-lg font-black text-text-main">Filtros de búsqueda</h2>
           <div className="grid gap-4 sm:grid-cols-3">
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <label className="flex flex-col gap-2 text-sm font-bold text-text-main">
               RUT del Trabajador
               <input
                 type="text"
                 value={rutFilter}
                 onChange={(e) => setRutFilter(e.target.value)}
                 placeholder="Ej: 12.345.678-9"
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none font-bold"
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <label className="flex flex-col gap-2 text-sm font-bold text-text-main">
               Fecha Desde
               <input
                 type="date"
                 value={startDateFilter}
                 onChange={(e) => setStartDateFilter(e.target.value)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-amber-400 focus:outline-none"
+                className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main focus:border-secondary focus:outline-none font-bold"
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <label className="flex flex-col gap-2 text-sm font-bold text-text-main">
               Fecha Hasta
               <input
                 type="date"
                 value={endDateFilter}
                 onChange={(e) => setEndDateFilter(e.target.value)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-amber-400 focus:outline-none"
+                className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main focus:border-secondary focus:outline-none font-bold"
               />
             </label>
           </div>
         </section>
 
         {/* Deliveries Table */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-2xl backdrop-blur-md">
+        <div className="overflow-hidden rounded-2xl border-4 border-border bg-bg-card shadow-2xl">
           {error && (
-            <div className="m-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            <div className="m-4 rounded-xl border-4 border-danger bg-danger/10 p-4 text-sm text-text-main font-bold">
               {error}
             </div>
           )}
@@ -238,82 +241,82 @@ export default function AdminDashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-white/10 bg-slate-900/60 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <tr className="border-b-4 border-border bg-bg-card text-xs font-black uppercase tracking-wider text-text-main">
                   <th className="py-4 px-6">
                     <input
                       type="checkbox"
                       checked={deliveries.length > 0 && selectedIds.size === deliveries.length}
                       onChange={handleSelectAllToggle}
-                      className="rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                      className="rounded border-4 border-border text-secondary focus:ring-secondary w-5 h-5 cursor-pointer accent-secondary"
                     />
                   </th>
-                  <th className="py-4 px-6">Trabajador / RUT</th>
-                  <th className="py-4 px-6">Fecha Entrega</th>
-                  <th className="py-4 px-6">Firma</th>
-                  <th className="py-4 px-6">Notificación</th>
-                  <th className="py-4 px-6">Geofencing</th>
-                  <th className="py-4 px-6">Integridad (SHA-256)</th>
+                  <th className="py-4 px-6 font-black text-text-main">Trabajador / RUT</th>
+                  <th className="py-4 px-6 font-black text-text-main">Fecha Entrega</th>
+                  <th className="py-4 px-6 font-black text-text-main">Firma</th>
+                  <th className="py-4 px-6 font-black text-text-main">Notificación</th>
+                  <th className="py-4 px-6 font-black text-text-main">Geofencing</th>
+                  <th className="py-4 px-6 font-black text-text-main">Integridad (SHA-256)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-sm">
+              <tbody className="divide-y-4 divide-border text-sm font-bold text-text-main">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400">
-                      <div className="animate-spin inline-block w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full mb-2"></div>
+                    <td colSpan={7} className="py-10 text-center text-text-muted">
+                      <div className="animate-spin inline-block w-6 h-6 border-4 border-secondary border-t-transparent rounded-full mb-2"></div>
                       <p>Cargando registros...</p>
                     </td>
                   </tr>
                 ) : deliveries.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400">
+                    <td colSpan={7} className="py-10 text-center text-text-muted">
                       No se encontraron actas de entrega para los filtros especificados.
                     </td>
                   </tr>
                 ) : (
                   deliveries.map((delivery) => (
-                    <tr key={delivery.id} className="hover:bg-white/5 transition">
+                    <tr key={delivery.id} className="hover:bg-bg-main transition-colors">
                       <td className="py-4 px-6">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(delivery.id)}
                           onChange={() => handleSelectToggle(delivery.id)}
-                          className="rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                          className="rounded border-4 border-border text-secondary focus:ring-secondary w-5 h-5 cursor-pointer accent-secondary"
                         />
                       </td>
                       <td className="py-4 px-6">
-                        <div className="font-semibold text-white">{delivery.workerFullName}</div>
-                        <div className="text-xs text-slate-400">{delivery.rut}</div>
+                        <div className="font-black text-text-main">{delivery.workerFullName}</div>
+                        <div className="text-xs text-text-muted">{delivery.rut}</div>
                       </td>
-                      <td className="py-4 px-6 text-slate-300">
+                      <td className="py-4 px-6 text-text-main">
                         {new Date(delivery.deliveredAt).toLocaleString('es-CL')}
                       </td>
                       <td className="py-4 px-6">
                         {delivery.isException ? (
-                          <span className="inline-flex rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-medium text-rose-300 border border-rose-500/25">
+                          <span className="inline-flex rounded-lg bg-warning text-white dark:text-black px-2.5 py-1 text-xs font-black border-2 border-border">
                             Testigo de Fe
                           </span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300 border border-emerald-500/25">
+                          <span className="inline-flex rounded-lg bg-success text-white px-2.5 py-1 text-xs font-black border-2 border-border">
                             Biométrica
                           </span>
                         )}
                       </td>
                       <td className="py-4 px-6">
                         {delivery.notificationStatus === 'SENT' ? (
-                          <span className="inline-flex rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                          <span className="inline-flex rounded-lg bg-success text-white px-2.5 py-1 text-xs font-black border-2 border-border">
                             Enviada
                           </span>
                         ) : delivery.notificationStatus === 'FAILED' ? (
-                          <span className="inline-flex rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-medium text-rose-300">
+                          <span className="inline-flex rounded-lg bg-danger text-white px-2.5 py-1 text-xs font-black border-2 border-border">
                             Fallida
                           </span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-slate-500/15 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+                          <span className="inline-flex rounded-lg bg-secondary text-white px-2.5 py-1 text-xs font-black border-2 border-border">
                             Pendiente
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-6 text-xs text-slate-400">
+                      <td className="py-4 px-6 text-xs text-text-muted">
                         {delivery.latitude && delivery.longitude ? (
                           <span>
                             {delivery.latitude.toFixed(4)}, {delivery.longitude.toFixed(4)}
@@ -322,7 +325,7 @@ export default function AdminDashboardPage() {
                           <span>Sin GPS</span>
                         )}
                       </td>
-                      <td className="py-4 px-6 font-mono text-xs text-slate-400 break-all max-w-xs">
+                      <td className="py-4 px-6 font-mono text-xs text-text-muted break-all max-w-xs">
                         {delivery.documentIntegrity?.sha256 || 'Generando...'}
                       </td>
                     </tr>
@@ -333,22 +336,22 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-white/10 bg-slate-900/40 py-4 px-6 flex justify-between items-center text-sm">
-            <span className="text-slate-400">
+          <div className="border-t-4 border-border bg-bg-card py-4 px-6 flex justify-between items-center text-sm font-bold text-text-main">
+            <span className="text-text-muted">
               Mostrando {deliveries.length} de {total} registros
             </span>
             <div className="flex gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg bg-slate-800 border border-white/10 px-4 py-2 hover:bg-slate-700 transition disabled:opacity-50"
+                className="rounded-xl bg-secondary border-4 border-border px-4 py-2 font-black text-white hover:bg-interactive-hover transition disabled:opacity-50 active:scale-95"
               >
                 Anterior
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg bg-slate-800 border border-white/10 px-4 py-2 hover:bg-slate-700 transition disabled:opacity-50"
+                className="rounded-xl bg-secondary border-4 border-border px-4 py-2 font-black text-white hover:bg-interactive-hover transition disabled:opacity-50 active:scale-95"
               >
                 Siguiente
               </button>

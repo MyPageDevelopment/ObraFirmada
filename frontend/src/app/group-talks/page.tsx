@@ -5,6 +5,7 @@ import { CameraService } from '@/lib/utils/camera.service';
 import { groupTalkApi } from '@/lib/services/group-talk-api.service';
 import { equipmentDeliveryApi } from '@/lib/services/equipment-delivery-api.service';
 import { formatChileanRut, isValidChileanRut } from '@/lib/utils/rut-validator';
+import { ThemeHeader } from '@/components/common/ThemeHeader';
 
 interface Attendee {
   rut: string;
@@ -362,20 +363,20 @@ export default function GroupTalksPage() {
     }
   };
 
-  // GPS denegation blocker (Sprint 4)
+  // GPS validation blocker
   if (gpsBlocked) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
-        <div className="max-w-md rounded-[2rem] border border-rose-500/30 bg-rose-950/20 p-8 text-center backdrop-blur-xl">
-          <p className="text-4xl">⚠️</p>
-          <h1 className="mt-4 text-2xl font-black text-rose-300">Acceso GPS Obligatorio</h1>
-          <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+      <div className="min-h-screen bg-bg-main text-text-main flex flex-col justify-center items-center p-4">
+        <div className="max-w-md rounded-2xl border-4 border-danger bg-bg-card p-8 text-center text-text-main shadow-2xl">
+          <p className="text-5xl">⚠️</p>
+          <h1 className="mt-4 text-2xl font-black text-danger">Acceso GPS Obligatorio</h1>
+          <p className="mt-4 text-sm text-text-muted font-bold leading-relaxed">
             Por normativas de seguridad laboral y geofencing del proyecto, debe conceder permisos de localización
             para poder operar esta pantalla.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 w-full rounded-full bg-rose-500 py-3 font-semibold text-white hover:bg-rose-400 transition"
+            className="mt-6 w-full rounded-xl bg-secondary py-4.5 px-8 font-black text-lg text-white hover:bg-interactive-hover border-4 border-border transition active:scale-95"
           >
             Reintentar Permisos
           </button>
@@ -385,43 +386,45 @@ export default function GroupTalksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#1e3a8a_0%,_#0f172a_55%,_#020617_100%)] p-4 text-white font-sans">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen flex flex-col bg-bg-main text-text-main transition-colors duration-150">
+      <ThemeHeader />
+
+      <div className="mx-auto max-w-7xl w-full p-4 flex-1 flex flex-col justify-center">
         {/* Setup Phase */}
         {phase === 'setup' && (
-          <div className="mx-auto mt-12 max-w-xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/40 p-8 shadow-2xl backdrop-blur-xl">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-amber-400">Sprint 5</span>
-            <h1 className="mt-2 text-3xl font-black">Registro de Charla Grupal</h1>
-            <p className="mt-2 text-sm text-slate-300">
+          <div className="mx-auto max-w-xl w-full overflow-hidden rounded-2xl border-4 border-border bg-bg-card p-8 shadow-2xl">
+            <span className="text-sm font-black uppercase tracking-[0.25em] text-secondary">✅ MODO PRODUCCIÓN</span>
+            <h1 className="mt-2 text-3xl font-black text-text-main">Registro de Charla Grupal</h1>
+            <p className="mt-2 text-sm text-text-muted font-bold">
               Configure la sesión para habilitar el escaneo en serie continuo de los trabajadores.
             </p>
 
             <div className="mt-6 space-y-4">
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
+              <label className="flex flex-col gap-2 text-base font-black text-text-main">
                 Título / Tema de la Charla
                 <input
                   type="text"
                   value={talkTitle}
                   onChange={(e) => setTalkTitle(e.target.value)}
                   placeholder="Ej: Charla de inducción de seguridad general"
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                  className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition font-bold"
                 />
               </label>
 
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
+              <label className="flex flex-col gap-2 text-base font-black text-text-main">
                 Expositor / Prevencionista a cargo
                 <input
                   type="text"
                   value={speakerName}
                   onChange={(e) => setSpeakerName(e.target.value)}
                   placeholder="Ej: Mario Rojas"
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                  className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition font-bold"
                 />
               </label>
 
               {coords && (
-                <div className="rounded-xl bg-slate-900/60 p-3 text-xs text-slate-400 flex justify-between">
-                  <span>GPS Validado</span>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-3 text-sm text-text-main font-bold flex justify-between">
+                  <span>🛰️ GPS Validado</span>
                   <span>
                     Lat: {coords.latitude.toFixed(4)} | Lon: {coords.longitude.toFixed(4)}
                   </span>
@@ -431,7 +434,7 @@ export default function GroupTalksPage() {
               <button
                 type="button"
                 onClick={handleStartTalk}
-                className="mt-4 w-full rounded-full bg-amber-400 py-3 font-semibold text-slate-950 hover:bg-amber-300 transition"
+                className="mt-4 w-full rounded-xl bg-secondary py-4.5 px-6 font-black text-xl text-white hover:bg-interactive-hover active:scale-95 transition border-4 border-border"
               >
                 Comenzar Charla Grupal
               </button>
@@ -441,56 +444,58 @@ export default function GroupTalksPage() {
 
         {/* Scanning & Witness loops */}
         {(phase === 'scanning' || phase === 'witness') && (
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr] w-full">
             {/* Left: General info and attendee check-list */}
             <div className="flex flex-col gap-6">
-              <div className="rounded-[2rem] border border-white/10 bg-slate-950/40 p-6 backdrop-blur-xl">
-                <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">Tema Charla</span>
-                <h2 className="text-2xl font-black truncate">{talkTitle}</h2>
-                <p className="text-sm text-slate-400">Dictada por: {speakerName}</p>
+              <div className="rounded-2xl border-4 border-border bg-bg-card p-6">
+                <span className="text-sm uppercase tracking-wider text-secondary font-black">Tema Charla</span>
+                <h2 className="text-2xl font-black text-text-main truncate">{talkTitle}</h2>
+                <p className="text-sm text-text-muted font-bold">Dictada por: {speakerName}</p>
 
-                <div className="mt-6 flex justify-between gap-4 border-t border-white/10 pt-4">
+                <div className="mt-6 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border-t-4 border-border pt-4 bg-bg-card">
                   <div>
-                    <p className="text-xs text-slate-400">Total Asistentes</p>
-                    <p className="text-xl font-bold text-white">{attendees.length}</p>
+                    <p className="text-xs text-text-muted font-black uppercase">Total Asistentes</p>
+                    <p className="text-2xl font-black text-text-main">{attendees.length}</p>
                   </div>
                   <button
                     onClick={handleFinishTalk}
                     disabled={attendees.length === 0 || globalLoading}
-                    className="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400 transition disabled:opacity-50"
+                    className="rounded-xl bg-success px-5 py-3.5 text-base font-black text-white hover:bg-green-600 transition border-4 border-border disabled:opacity-50"
                   >
                     {globalLoading ? '⏳ Generando...' : '📄 Finalizar y Emitir Acta'}
                   </button>
                 </div>
 
                 {globalError && (
-                  <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-                    {globalError}
+                  <div className="mt-4 rounded-xl border-4 border-danger bg-bg-card p-3 text-sm text-text-main font-bold">
+                    ❌ {globalError}
                   </div>
                 )}
               </div>
 
               {/* Attendee register list */}
-              <div className="flex-1 rounded-[2rem] border border-white/10 bg-slate-950/40 p-6 backdrop-blur-xl flex flex-col">
-                <h3 className="text-lg font-bold text-white border-b border-white/5 pb-2">Registro de Asistencia ({attendees.length})</h3>
-                <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] space-y-3">
+              <div className="flex-1 rounded-2xl border-4 border-border bg-bg-card p-6 flex flex-col">
+                <h3 className="text-lg font-black text-text-main border-b-4 border-border pb-3">
+                  Registro de Asistencia ({attendees.length})
+                </h3>
+                <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] space-y-3 pr-1">
                   {attendees.length === 0 ? (
-                    <p className="text-sm text-slate-500 text-center py-8">Ningún asistente registrado aún.</p>
+                    <p className="text-sm text-text-muted font-bold text-center py-8">Ningún asistente registrado aún.</p>
                   ) : (
                     attendees.map((att, i) => (
-                      <div key={i} className="rounded-xl bg-white/5 p-3 flex justify-between items-center text-sm">
+                      <div key={i} className="rounded-xl border-4 border-border bg-bg-card p-3 flex justify-between items-center text-sm font-bold text-text-main">
                         <div>
-                          <div className="font-semibold text-white">{att.fullName}</div>
-                          <div className="text-xs text-slate-400">{att.rut}</div>
+                          <div className="font-black text-text-main">{att.fullName}</div>
+                          <div className="text-xs text-text-muted">{att.rut}</div>
                         </div>
                         <div>
                           {att.isException ? (
-                            <span className="rounded-full bg-rose-500/15 border border-rose-500/20 px-2.5 py-0.5 text-xs text-rose-300 font-semibold">
-                              Testigo
+                            <span className="rounded-lg bg-warning text-white dark:text-black border-2 border-border px-2.5 py-0.5 text-xs font-black">
+                              ⚠️ Testigo
                             </span>
                           ) : (
-                            <span className="rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-0.5 text-xs text-emerald-300 font-semibold">
-                              Biometría
+                            <span className="rounded-lg bg-success text-white border-2 border-border px-2.5 py-0.5 text-xs font-black">
+                              ✓ Biometría
                             </span>
                           )}
                         </div>
@@ -502,9 +507,9 @@ export default function GroupTalksPage() {
             </div>
 
             {/* Right: Loop form with live camera feed */}
-            <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/40 shadow-2xl backdrop-blur-xl flex flex-col">
+            <div className="overflow-hidden rounded-2xl border-4 border-border bg-bg-card shadow-2xl flex flex-col text-text-main">
               {/* Live camera stream */}
-              <div className="aspect-video bg-black relative overflow-hidden border-b border-white/10">
+              <div className="aspect-video bg-black relative overflow-hidden border-b-4 border-border">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -512,14 +517,14 @@ export default function GroupTalksPage() {
                   muted
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-4 left-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-slate-950 animate-pulse">
+                <div className="absolute top-4 left-4 rounded-xl border-2 border-border bg-success px-3 py-1.5 text-xs font-black text-white animate-pulse">
                   Cámara Activa
                 </div>
                 {cameraError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-6 text-center">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black p-6 text-center text-white">
                     <div>
-                      <p className="text-rose-400 font-bold">❌ {cameraError}</p>
-                      <p className="text-xs text-slate-400 mt-2">Habilite el acceso a la cámara en el navegador.</p>
+                      <p className="text-danger font-black text-lg">❌ {cameraError}</p>
+                      <p className="text-xs text-text-muted mt-2 font-bold">Habilite el acceso a la cámara en el navegador.</p>
                     </div>
                   </div>
                 )}
@@ -528,14 +533,14 @@ export default function GroupTalksPage() {
               {/* Loop phase changes: SCANNING vs WITNESS */}
               {phase === 'scanning' ? (
                 <div className="p-6 space-y-4">
-                  <h3 className="text-xl font-bold text-white">Validar Asistente</h3>
-                  <p className="text-xs text-slate-300 leading-normal">
+                  <h3 className="text-xl font-black text-text-main">Validar Asistente</h3>
+                  <p className="text-xs text-text-muted font-bold leading-normal">
                     Ingrese el RUT del trabajador y elija el método biométrico. El sistema tomará una foto
                     instantánea del visor de arriba y la contrastará contra el perfil guardado.
                   </p>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                    <label className="flex flex-col gap-2 text-base font-black text-text-main">
                       RUT del Trabajador
                       <input
                         type="text"
@@ -547,16 +552,16 @@ export default function GroupTalksPage() {
                           } catch {}
                         }}
                         placeholder="Ej: 12.345.678-9"
-                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition font-bold"
                       />
                     </label>
 
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                    <label className="flex flex-col gap-2 text-base font-black text-text-main">
                       Tipo Biométrico
                       <select
                         value={biometricType}
                         onChange={(e) => setBiometricType(e.target.value as 'FACE' | 'PALM')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-amber-400 focus:outline-none"
+                        className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main focus:border-secondary focus:outline-none transition font-bold"
                       >
                         <option value="FACE">Rostro</option>
                         <option value="PALM">Palma</option>
@@ -565,68 +570,68 @@ export default function GroupTalksPage() {
                   </div>
 
                   {workerVerifyError && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-                      {workerVerifyError}
+                    <div className="rounded-xl border-4 border-danger bg-bg-card p-3 text-sm text-text-main font-bold">
+                      ❌ {workerVerifyError}
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button
                       type="button"
                       onClick={handleVerifyWorker}
                       disabled={isVerifying || !cameraReady}
-                      className="flex-1 rounded-full bg-amber-400 py-3 font-semibold text-slate-950 hover:bg-amber-300 transition disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-secondary py-4 px-6 font-black text-white hover:bg-interactive-hover active:scale-95 transition border-4 border-border flex items-center justify-center gap-2"
                     >
                       {isVerifying ? '⏳ Validando...' : '📷 Verificar Biometría'}
                     </button>
                     <button
                       type="button"
                       onClick={handleTriggerWitness}
-                      className="rounded-full border border-white/10 bg-slate-800 px-5 py-3 font-semibold hover:bg-slate-700 transition"
+                      className="rounded-xl bg-warning text-white dark:text-black py-4 px-6 font-black border-4 border-border active:scale-95 transition flex items-center justify-center gap-2"
                     >
-                      Bypass Testigo
+                      ⚠️ Bypass Testigo
                     </button>
                   </div>
                 </div>
               ) : (
                 /* Witness exception layout */
                 <div className="p-6 space-y-4">
-                  <h3 className="text-xl font-bold text-rose-300">Bypass por Testigo de Fe (Excepción)</h3>
-                  <p className="text-xs text-slate-300">
+                  <h3 className="text-xl font-black text-warning">Bypass por Testigo de Fe (Excepción)</h3>
+                  <p className="text-xs text-text-muted font-bold">
                     Use este flujo si el trabajador tiene problemas de validación biométrica reiterados.
                   </p>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                    <label className="flex flex-col gap-2 text-sm font-black text-text-main">
                       Nombre Trabajador
                       <input
                         type="text"
                         value={workerName}
                         onChange={(e) => setWorkerName(e.target.value)}
                         placeholder="Nombre completo"
-                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none font-bold"
                       />
                     </label>
-                    <div className="flex flex-col gap-2 text-sm text-slate-300">
+                    <div className="flex flex-col gap-2 text-sm font-black text-text-main">
                       RUT Trabajador
-                      <div className="rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-slate-400">
+                      <div className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-muted font-mono font-bold">
                         {workerRut}
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-white/5">
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t-4 border-border">
+                    <label className="flex flex-col gap-2 text-sm font-black text-text-main">
                       Nombre Testigo (Prevencionista)
                       <input
                         type="text"
                         value={witnessName}
                         onChange={(e) => setWitnessName(e.target.value)}
                         placeholder="Ej: Mario Rojas"
-                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none font-bold"
                       />
                     </label>
-                    <label className="flex flex-col gap-2 text-sm text-slate-300">
+                    <label className="flex flex-col gap-2 text-sm font-black text-text-main">
                       RUT Testigo
                       <input
                         type="text"
@@ -638,15 +643,15 @@ export default function GroupTalksPage() {
                           } catch {}
                         }}
                         placeholder="Ej: 12.345.678-9"
-                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none font-bold"
                       />
                     </label>
                   </div>
 
                   {/* Draw Signature Canvas Inline */}
                   <div className="space-y-2">
-                    <span className="text-sm font-semibold text-slate-300">Firma del Testigo</span>
-                    <div className="overflow-hidden rounded-xl border border-white/10 bg-white">
+                    <span className="text-sm font-black text-text-main">Firma del Testigo</span>
+                    <div className="overflow-hidden rounded-xl border-4 border-border bg-white">
                       <canvas
                         ref={canvasRef}
                         width={600}
@@ -661,8 +666,8 @@ export default function GroupTalksPage() {
                   </div>
 
                   {witnessSigError && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-                      {witnessSigError}
+                    <div className="rounded-xl border-4 border-danger bg-bg-card p-3 text-sm text-text-main font-bold">
+                      ❌ {witnessSigError}
                     </div>
                   )}
 
@@ -670,21 +675,21 @@ export default function GroupTalksPage() {
                     <button
                       type="button"
                       onClick={handleConfirmWitness}
-                      className="flex-1 rounded-full bg-rose-500 py-3 font-semibold text-white hover:bg-rose-400 transition"
+                      className="flex-1 rounded-xl bg-danger text-white py-4.5 px-6 font-black hover:bg-danger/90 active:scale-95 transition border-4 border-border"
                     >
                       Confirmar Bypass
                     </button>
                     <button
                       type="button"
                       onClick={handleClearSignature}
-                      className="rounded-full border border-white/10 bg-slate-800 px-4 py-3 text-xs font-semibold hover:bg-slate-700 transition"
+                      className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-base font-black hover:bg-bg-main active:scale-95 transition text-text-main"
                     >
                       🧹 Limpiar
                     </button>
                     <button
                       type="button"
                       onClick={() => setPhase('scanning')}
-                      className="rounded-full border border-white/10 bg-slate-800 px-4 py-3 text-xs font-semibold hover:bg-slate-700 transition"
+                      className="rounded-xl border-4 border-border bg-bg-card px-4 py-3 text-base font-black hover:bg-bg-main active:scale-95 transition text-text-main"
                     >
                       Cancelar
                     </button>
@@ -697,21 +702,21 @@ export default function GroupTalksPage() {
 
         {/* Success / Complete page */}
         {phase === 'success' && (
-          <div className="mx-auto mt-12 max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/40 shadow-2xl backdrop-blur-xl">
-            <div className="bg-emerald-500/20 px-8 py-8 border-b border-white/10">
-              <span className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-200">Charla finalizada</span>
+          <div className="mx-auto mt-12 max-w-2xl w-full overflow-hidden rounded-2xl border-4 border-border bg-bg-card shadow-2xl text-text-main">
+            <div className="bg-success text-white px-8 py-8 border-b-4 border-border">
+              <span className="text-xs font-black uppercase tracking-[0.25em]">Charla finalizada</span>
               <h1 className="mt-2 text-4xl font-black">Acta Grupal Generada</h1>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm font-bold opacity-90">
                 Se guardó el registro con {attendees.length} asistentes. El archivo PDF con las firmas e integridad SHA-256 se descargó correctamente.
               </p>
             </div>
 
             <div className="p-8 space-y-4">
-              <div className="rounded-xl bg-slate-900/60 p-4 border border-white/5 text-sm">
-                <h3 className="font-bold text-white mb-2">Detalles Generales</h3>
-                <p><span className="text-slate-400">Título:</span> {talkTitle}</p>
-                <p><span className="text-slate-400">Expositor:</span> {speakerName}</p>
-                <p><span className="text-slate-400">Asistentes:</span> {attendees.length}</p>
+              <div className="rounded-xl bg-bg-card border-4 border-border p-4 text-sm font-bold text-text-muted">
+                <h3 className="font-black text-text-main text-base mb-2">Detalles Generales</h3>
+                <p><span className="font-black text-text-main">Título:</span> {talkTitle}</p>
+                <p><span className="font-black text-text-main">Expositor:</span> {speakerName}</p>
+                <p><span className="font-black text-text-main">Asistentes:</span> {attendees.length}</p>
               </div>
 
               <div className="flex gap-4">
@@ -723,15 +728,15 @@ export default function GroupTalksPage() {
                     setPdfDownloaded(false);
                     setPhase('setup');
                   }}
-                  className="rounded-full bg-amber-400 px-6 py-3 font-semibold text-slate-950 hover:bg-amber-300 transition"
+                  className="rounded-xl bg-secondary px-6 py-4 px-6 font-black text-white hover:bg-interactive-hover active:scale-95 transition border-4 border-border"
                 >
                   Registrar Otra Charla
                 </button>
                 <a
-                  href="/dashboard"
-                  className="rounded-full border border-white/10 bg-slate-800 px-6 py-3 font-semibold hover:bg-slate-700 transition text-center"
+                  href="/"
+                  className="rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-base font-black hover:bg-bg-main active:scale-95 transition text-center text-text-main flex items-center justify-center"
                 >
-                  Ir al Dashboard
+                  Ir al Inicio
                 </a>
               </div>
             </div>

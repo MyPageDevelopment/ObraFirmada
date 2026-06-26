@@ -50,11 +50,32 @@ class EquipmentDeliveryApiService {
 
     this.api.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        if (error.response?.data instanceof Blob && error.response.data.type === 'application/json') {
+          try {
+            const text = await error.response.data.text();
+            const parsed = JSON.parse(text);
+            if (parsed && parsed.message) {
+              error.message = parsed.message;
+              error.response.data = parsed;
+            }
+          } catch (e) {
+            console.error('Failed to parse error blob JSON', e);
+          }
+        }
         console.error('API Error:', error.response?.data || error.message);
         return Promise.reject(error);
       },
     );
+  }
+
+  async createEquipmentDeliveryBatch(
+    data: CreateEquipmentDeliveryRequest[],
+  ): Promise<any> {
+    const response = await this.api.post('/equipment-delivery/batch', data, {
+      responseType: 'json',
+    });
+    return response.data;
   }
 
   async createEquipmentDeliveryDocument(

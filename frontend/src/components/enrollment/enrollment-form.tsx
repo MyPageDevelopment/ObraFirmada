@@ -80,73 +80,76 @@ export function EnrollmentFormComponent({ onSubmit, isLoading = false }: Enrollm
     e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData);
+      try {
+        const formatted = formatChileanRut(formData.rut);
+        onSubmit({ rut: formatted });
+      } catch {
+        onSubmit(formData);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-primary/90 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full">
-        {/* Header */}
-        <div className="bg-secondary text-white px-6 py-8 border-b-4 border-orange-600">
-          <h1 className="text-3xl font-bold mb-2">✍️ Enrolamiento de Trabajador</h1>
-          <p className="text-sm opacity-90">Ingresa tus datos para iniciar el proceso de verificación</p>
-        </div>
-
-        {/* Logo/Branding */}
-        <div className="text-center py-6 bg-gray-50 border-b">
-          <h2 className="text-2xl font-bold text-primary">ObraFirmada</h2>
-          <p className="text-xs text-gray-600 mt-1">Plataforma de Firma de Documentos Laborales</p>
-        </div>
-
-        {/* Formulario */}
-        <form onSubmit={handleSubmit} className="px-6 py-8 space-y-6">
-          {/* Campo RUT */}
-          <div>
-            <label htmlFor="rut" className="block text-sm font-semibold text-gray-700 mb-2">
-              RUT Chileno *
-            </label>
-            <input
-              type="text"
-              id="rut"
-              name="rut"
-              placeholder="12.345.678-9"
-              value={formData.rut}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`w-full px-4 py-2 border-2 rounded-lg focus:outline-none transition ${
-                touched.rut && errors.rut
-                  ? 'border-danger focus:border-danger bg-red-50'
-                  : 'border-gray-300 focus:border-secondary'
-              }`}
-              disabled={isLoading}
-            />
-            {touched.rut && errors.rut && (
-              <p className="text-danger text-sm mt-1">❌ {errors.rut}</p>
-            )}
-            <p className="text-xs text-gray-600 mt-1">
-              💡 Formato: 12.345.678-9 (puedes omitir puntos y guión)
-            </p>
-          </div>
-
-          {/* Nota de seguridad */}
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-            <p className="text-xs text-blue-800">
-              🔒 <span className="font-semibold">Tu información es segura:</span> Solo se usa para enrolamiento
-              biometrico conforme a la Ley 19.628.
-            </p>
-          </div>
-
-          {/* Botón Submit */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-secondary text-white py-3 rounded-lg font-bold text-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? '⏳ Procesando...' : '➡️ Continuar'}
-          </button>
-        </form>
+    <div className="bg-bg-card rounded-2xl shadow-2xl max-w-2xl w-full border-4 border-border overflow-hidden text-text-main select-none">
+      {/* Header */}
+      <div className="bg-secondary text-white px-6 py-8 border-b-4 border-border">
+        <h1 className="text-3xl font-black mb-2">✍️ Enrolamiento de Trabajador</h1>
+        <p className="text-sm opacity-90 font-bold">Ingresa tus datos para iniciar el proceso de verificación</p>
       </div>
+
+      {/* Logo/Branding */}
+      <div className="text-center py-6 bg-bg-card border-b-4 border-border">
+        <h2 className="text-2xl font-black text-primary">ObraFirmada</h2>
+        <p className="text-xs text-text-muted font-semibold mt-1">Plataforma de Firma de Documentos Laborales</p>
+      </div>
+
+      {/* Formulario */}
+      <form onSubmit={handleSubmit} className="px-6 py-8 space-y-6">
+        {/* Campo RUT */}
+        <div>
+          <label htmlFor="rut" className="block text-base font-black text-text-main mb-2">
+            RUT Chileno *
+          </label>
+          <input
+            type="text"
+            id="rut"
+            name="rut"
+            placeholder="12.345.678-9"
+            value={formData.rut}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className={`w-full px-4 py-3 border-4 rounded-xl focus:outline-none transition ${
+              touched.rut && errors.rut
+                ? 'border-danger bg-danger/10 text-text-main focus:border-danger'
+                : 'border-border bg-bg-card text-text-main focus:border-secondary'
+            }`}
+            disabled={isLoading}
+          />
+          {touched.rut && errors.rut && (
+            <p className="text-danger font-bold text-sm mt-2">❌ {errors.rut}</p>
+          )}
+          <p className="text-sm text-text-muted font-semibold mt-2">
+            💡 Formato: 12.345.678-9 (puedes omitir puntos y guión)
+          </p>
+        </div>
+
+        {/* Nota de seguridad */}
+        <div className="bg-bg-card border-4 border-border p-4 rounded-xl">
+          <p className="text-xs text-text-main font-bold">
+            🔒 <span className="font-extrabold text-secondary">Tu información es segura:</span> Solo se usa para enrolamiento
+            biométrico conforme a la Ley 19.628.
+          </p>
+        </div>
+
+        {/* Botón Submit */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-secondary text-white py-4.5 rounded-xl font-black text-xl hover:bg-interactive-hover transition border-4 border-border active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? '⏳ Procesando...' : '➡️ Continuar'}
+        </button>
+      </form>
     </div>
   );
 }

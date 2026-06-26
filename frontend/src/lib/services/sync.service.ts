@@ -77,14 +77,13 @@ class SyncService {
         await IndexedDbService.deleteEnrollment(enrollment.id);
       }
 
-      // 2. Sync deliveries
-      for (const delivery of pendingDeliveries) {
-        if (!delivery.id) continue;
-        await equipmentDeliveryApi.createEquipmentDeliveryDocument({
+      // 2. Sync deliveries in a single transaction batch
+      if (pendingDeliveries.length > 0) {
+        const batchPayload = pendingDeliveries.map((delivery) => ({
           rut: delivery.rut,
           workerFullName: delivery.workerFullName,
-          biometricType: 'FACE', // default
-          biometricImageBase64: '', // not needed if validated or isException
+          biometricType: 'FACE' as const,
+          biometricImageBase64: '',
           signatureBase64: delivery.signatureBase64,
           equipmentItems: delivery.equipmentItems,
           latitude: delivery.latitude,
@@ -93,8 +92,15 @@ class SyncService {
           witnessRut: delivery.witnessRut,
           witnessFullName: delivery.witnessFullName,
           witnessSignatureBase64: delivery.witnessSignatureBase64,
-        });
-        await IndexedDbService.deleteDelivery(delivery.id);
+        }));
+
+        await equipmentDeliveryApi.createEquipmentDeliveryBatch(batchPayload);
+
+        for (const delivery of pendingDeliveries) {
+          if (delivery.id) {
+            await IndexedDbService.deleteDelivery(delivery.id);
+          }
+        }
       }
 
       this.notify('SUCCESS', 'Sincronización completada con éxito');

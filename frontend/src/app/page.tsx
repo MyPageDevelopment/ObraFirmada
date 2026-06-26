@@ -1,7 +1,10 @@
 'use client';
 
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { syncService, SyncStatus } from '@/lib/services/sync.service';
+import { ThemeHeader } from '@/components/common/ThemeHeader';
 
 export default function Home() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('IDLE');
@@ -40,26 +43,28 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#0f172a_0%,_#020617_100%)] flex flex-col justify-between py-12 px-4 text-white font-sans">
-      <div className="mx-auto max-w-4xl w-full flex-1 flex flex-col justify-center">
+    <div className="min-h-screen flex flex-col bg-bg-main text-text-main select-none transition-colors duration-150">
+      <ThemeHeader />
+
+      <main className="flex-1 flex flex-col justify-center py-12 px-4 max-w-4xl mx-auto w-full">
         {/* Network & Offline Status Banner */}
         <div className="mb-8">
           {!online ? (
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200 backdrop-blur-md animate-pulse">
-              ⚠️ <strong>Modo Desconectado (Offline):</strong> Las transacciones y enrolamientos se guardarán localmente en IndexedDB y se sincronizarán de forma automática cuando vuelva la conexión.
+            <div className="rounded-xl border-4 border-border bg-warning text-white dark:text-black p-4 text-center font-extrabold flex items-center justify-center gap-2">
+              ⚠️ <strong>MODO DESCONECTADO:</strong> Las firmas y registros se guardan en IndexedDB localmente y se subirán al volver la conexión.
             </div>
           ) : hasPending ? (
-            <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-center text-sky-200 backdrop-blur-md flex flex-wrap justify-between items-center gap-3">
-              <span>
+            <div className="rounded-xl border-4 border-border bg-bg-card text-text-main p-4 flex flex-wrap justify-between items-center gap-3">
+              <span className="font-bold">
                 🔄 Hay registros pendientes por sincronizar en IndexedDB.
-                {syncStatus === 'SYNCING' && <span className="ml-1 text-xs opacity-80">({syncMsg})</span>}
+                {syncStatus === 'SYNCING' && <span className="ml-2 text-sm opacity-80">({syncMsg})</span>}
               </span>
               <button
                 onClick={handleManualSync}
                 disabled={syncStatus === 'SYNCING'}
-                className="rounded-full bg-sky-500 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-sky-400 transition"
+                className="rounded-xl bg-secondary text-white border-4 border-border px-5 py-2.5 font-black text-sm hover:bg-interactive-hover transition active:scale-95 disabled:opacity-50"
               >
-                {syncStatus === 'SYNCING' ? '⏳ Sincronizando...' : 'Sincronizar Ahora'}
+                {syncStatus === 'SYNCING' ? '⏳ Sincronizando...' : '🔄 Sincronizar Ahora'}
               </button>
             </div>
           ) : null}
@@ -67,11 +72,13 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <span className="text-xs font-bold uppercase tracking-[0.45em] text-amber-400">Plataforma Laboral Segura</span>
-          <h1 className="mt-4 text-5xl md:text-7xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-500 bg-clip-text text-transparent">
+          <span className="text-sm font-black uppercase tracking-[0.35em] text-secondary">
+            Plataforma Laboral Segura
+          </span>
+          <h1 className="mt-4 text-5xl md:text-6xl font-black tracking-tight text-primary">
             🏗️ ObraFirmada
           </h1>
-          <p className="mt-4 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-4 text-lg text-text-muted max-w-2xl mx-auto leading-relaxed font-bold">
             Gestión inteligente de enrolamiento biométrico, actas de entrega de EPP e integridad documental certificada en MySQL.
           </p>
         </div>
@@ -81,84 +88,84 @@ export default function Home() {
           {/* Card 1: Enrolamiento */}
           <a
             href="/enrollment"
-            className="group rounded-3xl border border-white/5 bg-slate-900/30 p-8 hover:border-amber-500/20 hover:bg-slate-900/50 transition duration-300 backdrop-blur-md flex flex-col justify-between"
+            className="group rounded-2xl border-4 border-border bg-bg-card p-8 flex flex-col justify-between hover:bg-secondary hover:text-white transition-all select-none text-text-main"
           >
             <div>
-              <span className="text-2xl">👤</span>
-              <h3 className="mt-4 text-xl font-bold text-white group-hover:text-amber-300 transition">
+              <span className="text-3xl">👤</span>
+              <h3 className="mt-4 text-xl font-black text-text-main group-hover:text-white transition-colors duration-150">
                 Enrolamiento Biométrico
               </h3>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+              <p className="mt-2 text-sm text-text-muted group-hover:text-white/90 leading-relaxed font-bold transition-colors duration-150">
                 Registra la identidad de los trabajadores capturando su vector biométrico facial o de palma.
               </p>
             </div>
-            <div className="mt-6 text-xs text-amber-400 font-semibold group-hover:translate-x-1 transition duration-200">
-              Comenzar Registro &rarr;
+            <div className="mt-6 text-sm text-secondary font-black group-hover:text-white transition-colors duration-150 flex items-center gap-1.5">
+              <span>👤</span> COMENZAR REGISTRO &rarr;
             </div>
           </a>
 
           {/* Card 2: Entrega EPP */}
           <a
             href="/equipment-delivery"
-            className="group rounded-3xl border border-white/5 bg-slate-900/30 p-8 hover:border-emerald-500/20 hover:bg-slate-900/50 transition duration-300 backdrop-blur-md flex flex-col justify-between"
+            className="group rounded-2xl border-4 border-border bg-bg-card p-8 flex flex-col justify-between hover:bg-secondary hover:text-white transition-all select-none text-text-main"
           >
             <div>
-              <span className="text-2xl">📄</span>
-              <h3 className="mt-4 text-xl font-bold text-white group-hover:text-emerald-300 transition">
+              <span className="text-3xl">📄</span>
+              <h3 className="mt-4 text-xl font-black text-text-main group-hover:text-white transition-colors duration-150">
                 Entrega de EPP
               </h3>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+              <p className="mt-2 text-sm text-text-muted group-hover:text-white/90 leading-relaxed font-bold transition-colors duration-150">
                 Genera actas individuales de entrega de implementos con firma digital manuscrita y validación biométrica en terreno.
               </p>
             </div>
-            <div className="mt-6 text-xs text-emerald-400 font-semibold group-hover:translate-x-1 transition duration-200">
-              Emitir Acta &rarr;
+            <div className="mt-6 text-sm text-secondary font-black group-hover:text-white transition-colors duration-150 flex items-center gap-1.5">
+              <span>📄</span> EMITIR ACTA &rarr;
             </div>
           </a>
 
           {/* Card 3: Charlas Grupales */}
           <a
             href="/group-talks"
-            className="group rounded-3xl border border-white/5 bg-slate-900/30 p-8 hover:border-sky-500/20 hover:bg-slate-900/50 transition duration-300 backdrop-blur-md flex flex-col justify-between"
+            className="group rounded-2xl border-4 border-border bg-bg-card p-8 flex flex-col justify-between hover:bg-secondary hover:text-white transition-all select-none text-text-main"
           >
             <div>
-              <span className="text-2xl">🖐️</span>
-              <h3 className="mt-4 text-xl font-bold text-white group-hover:text-sky-300 transition">
+              <span className="text-3xl">🖐️</span>
+              <h3 className="mt-4 text-xl font-black text-text-main group-hover:text-white transition-colors duration-150">
                 Charlas Grupales
               </h3>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+              <p className="mt-2 text-sm text-text-muted group-hover:text-white/90 leading-relaxed font-bold transition-colors duration-150">
                 Registro consecutivo y rápido de asistencia con escaneo continuo de cámara para charlas de seguridad.
               </p>
             </div>
-            <div className="mt-6 text-xs text-sky-400 font-semibold group-hover:translate-x-1 transition duration-200">
-              Iniciar Charla &rarr;
+            <div className="mt-6 text-sm text-secondary font-black group-hover:text-white transition-colors duration-150 flex items-center gap-1.5">
+              <span>🖐️</span> INICIAR CHARLA &rarr;
             </div>
           </a>
 
           {/* Card 4: Dashboard */}
           <a
             href="/dashboard"
-            className="group rounded-3xl border border-white/5 bg-slate-900/30 p-8 hover:border-indigo-500/20 hover:bg-slate-900/50 transition duration-300 backdrop-blur-md flex flex-col justify-between"
+            className="group rounded-2xl border-4 border-border bg-bg-card p-8 flex flex-col justify-between hover:bg-secondary hover:text-white transition-all select-none text-text-main"
           >
             <div>
-              <span className="text-2xl">📊</span>
-              <h3 className="mt-4 text-xl font-bold text-white group-hover:text-indigo-300 transition">
+              <span className="text-3xl">📊</span>
+              <h3 className="mt-4 text-xl font-black text-text-main group-hover:text-white transition-colors duration-150">
                 Dashboard Administrativo
               </h3>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+              <p className="mt-2 text-sm text-text-muted group-hover:text-white/90 leading-relaxed font-bold transition-colors duration-150">
                 Panel centralizado para gerentes y prevencionistas. Filtra entregas y descarga lotes en formato ZIP.
               </p>
             </div>
-            <div className="mt-6 text-xs text-indigo-400 font-semibold group-hover:translate-x-1 transition duration-200">
-              Ver Panel Central &rarr;
+            <div className="mt-6 text-sm text-secondary font-black group-hover:text-white transition-colors duration-150 flex items-center gap-1.5">
+              <span>📊</span> VER PANEL CENTRAL &rarr;
             </div>
           </a>
         </div>
-      </div>
+      </main>
 
-      <footer className="mt-12 text-center text-xs text-slate-500">
+      <footer className="mt-12 text-center text-xs text-text-muted font-bold pb-6">
         <p>ObraFirmada &copy; {new Date().getFullYear()} - Sistema Seguro Criptográfico</p>
       </footer>
-    </main>
+    </div>
   );
 }

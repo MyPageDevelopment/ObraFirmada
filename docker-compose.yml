@@ -37,6 +37,7 @@ services:
       BCRYPT_ROUNDS: 10
       PORT: 3001
       GEOFENCING_ENABLED: "false"
+      BIOMETRIC_MOCK_VERIFICATION: "true"
     ports:
       - "3001:3001"
     depends_on:

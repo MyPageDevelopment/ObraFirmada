@@ -13,6 +13,7 @@ import {
   EquipmentItemPayload,
 } from '@/lib/services/equipment-delivery-api.service';
 import { formatChileanRut, isValidChileanRut } from '@/lib/utils/rut-validator';
+import { ThemeHeader } from '@/components/common/ThemeHeader';
 
 type DeliveryStep = 'form' | 'signature' | 'biometric' | 'witness' | 'processing' | 'success' | 'error';
 
@@ -47,6 +48,7 @@ const initialCatalog: SelectedCatalogItem[] = [
 
 export default function EquipmentDeliveryPage() {
   const [step, setStep] = useState<DeliveryStep>('form');
+  const [mounted, setMounted] = useState(false);
   const [deliveryState, setDeliveryState] = useState<DeliveryState>({
     rut: '',
     workerFullName: '',
@@ -62,6 +64,7 @@ export default function EquipmentDeliveryPage() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== 'undefined') {
       setOnline(navigator.onLine);
       const on = () => setOnline(true);
@@ -69,7 +72,7 @@ export default function EquipmentDeliveryPage() {
       window.addEventListener('online', on);
       window.addEventListener('offline', off);
 
-      // GPS validation (Sprint 4)
+      // GPS validation
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -173,7 +176,7 @@ export default function EquipmentDeliveryPage() {
         isException: false,
       };
 
-      // Offline storage handling (Sprint 3)
+      // Offline storage handling
       if (!online) {
         const { IndexedDbService } = require('@/lib/utils/indexed-db.service');
         await IndexedDbService.saveDelivery({
@@ -261,7 +264,7 @@ export default function EquipmentDeliveryPage() {
         witnessSignatureBase64,
       };
 
-      // Offline storage handling (Sprint 3)
+      // Offline storage handling
       if (!online) {
         const { IndexedDbService } = require('@/lib/utils/indexed-db.service');
         await IndexedDbService.saveDelivery({
@@ -333,238 +336,253 @@ export default function EquipmentDeliveryPage() {
           key={item.code}
           type="button"
           onClick={() => handleCatalogToggle(index)}
-          className={`rounded-2xl border p-4 text-left transition-all duration-200 ${
+          className={`rounded-xl border-4 p-6 text-left transition-all duration-150 ${
             item.selected
-              ? 'border-amber-400 bg-amber-50 shadow-lg shadow-amber-100'
-              : 'border-slate-200 bg-white hover:border-slate-300'
+              ? 'border-border bg-secondary text-white'
+              : 'border-border bg-bg-card text-text-main hover:bg-bg-main'
           }`}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-semibold text-slate-900">{item.name}</p>
-              <p className="text-sm text-slate-600">{item.description}</p>
-              <p className="mt-2 text-xs uppercase tracking-[0.25em] text-slate-400">{item.code}</p>
+              <p className={`text-xl font-black ${item.selected ? 'text-white' : 'text-text-main'}`}>{item.name}</p>
+              <p className={`mt-1.5 text-sm ${item.selected ? 'text-white/95' : 'text-text-muted'} font-bold`}>{item.description}</p>
+              <p className={`mt-2 text-xs uppercase tracking-[0.25em] ${item.selected ? 'text-white/80' : 'text-text-muted'} font-bold`}>{item.code}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.selected ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              {item.selected ? 'Seleccionado' : 'Disponible'}
+            <span className={`rounded-lg px-4 py-1.5 text-xs font-black border-2 border-border ${item.selected ? 'bg-bg-card text-text-main' : 'bg-secondary text-white'}`}>
+              {item.selected ? '✓ Seleccionado' : 'Disponible'}
             </span>
           </div>
 
-          <div className="mt-4 flex items-center gap-3">
-            <label className="text-sm font-medium text-slate-700">Cantidad</label>
-            <input
-              type="number"
-              min={1}
-              value={item.quantity}
-              onChange={(event) => handleQuantityChange(index, Number(event.target.value))}
-              className="w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900"
-            />
+          <div className="mt-5 flex items-center gap-4">
+            <span className={`text-base font-black ${item.selected ? 'text-white' : 'text-text-main'}`}>Cantidad:</span>
+            <div className="flex items-center border-4 border-border rounded-xl overflow-hidden bg-bg-card text-text-main">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuantityChange(index, item.quantity - 1);
+                }}
+                className={`w-12 h-12 flex items-center justify-center font-black text-2xl border-r-4 border-border transition-all select-none ${item.selected ? 'bg-secondary hover:bg-interactive-hover text-white' : 'bg-bg-card hover:bg-bg-main text-text-main'}`}
+              >
+                -
+              </button>
+              <span className={`w-16 text-center font-black text-lg bg-transparent ${item.selected ? 'text-text-main' : 'text-text-main'}`}>{item.quantity}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuantityChange(index, item.quantity + 1);
+                }}
+                className={`w-12 h-12 flex items-center justify-center font-black text-2xl border-l-4 border-border transition-all select-none ${item.selected ? 'bg-secondary hover:bg-interactive-hover text-white' : 'bg-bg-card hover:bg-bg-main text-text-main'}`}
+              >
+                +
+              </button>
+            </div>
+            <span className={`text-sm font-bold capitalize ${item.selected ? 'text-white/90' : 'text-text-muted'}`}>{item.unit}</span>
           </div>
         </button>
       ))}
     </div>
   );
 
-  // GPS Blocker view (Sprint 4)
-  if (gpsBlocked) {
-    return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
-        <div className="max-w-md rounded-[2rem] border border-rose-500/30 bg-rose-950/20 p-8 text-center backdrop-blur-xl">
-          <p className="text-4xl">⚠️</p>
-          <h1 className="mt-4 text-2xl font-black text-rose-300">Ubicación GPS Requerida</h1>
-          <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+  if (!mounted) return null;
+
+  const renderFlowContent = () => {
+    if (gpsBlocked) {
+      return (
+        <div className="max-w-md rounded-2xl border-4 border-danger bg-bg-card p-8 text-center text-text-main">
+          <p className="text-5xl">⚠️</p>
+          <h1 className="mt-4 text-2xl font-black text-danger">Ubicación GPS Requerida</h1>
+          <p className="mt-4 text-sm text-text-muted font-bold leading-relaxed">
             Para garantizar la validez legal y geofencing del acta de entrega, debe habilitar el acceso GPS en su navegador.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 w-full rounded-full bg-rose-500 py-3 font-semibold text-white hover:bg-rose-400 transition"
+            className="mt-6 w-full rounded-xl bg-secondary py-4.5 px-8 font-black text-lg text-white hover:bg-interactive-hover border-4 border-border transition active:scale-95"
           >
             Reintentar Localización
           </button>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (step === 'signature') {
-    return (
-      <SignatureCaptureComponent
-        onConfirm={handleSignatureConfirm}
-        onBack={() => setStep('form')}
-        isLoading={isLoading}
-      />
-    );
-  }
+    if (step === 'signature') {
+      return (
+        <SignatureCaptureComponent
+          onConfirm={handleSignatureConfirm}
+          onBack={() => setStep('form')}
+          isLoading={isLoading}
+        />
+      );
+    }
 
-  if (step === 'biometric') {
-    return (
-      <BiometricCaptureComponent
-        onCapture={handleBiometricCapture}
-        biometricType={deliveryState.biometricType}
-        isLoading={isLoading}
-        onWitnessBypass={() => setStep('witness')}
-      />
-    );
-  }
+    if (step === 'biometric') {
+      return (
+        <BiometricCaptureComponent
+          onCapture={handleBiometricCapture}
+          biometricType={deliveryState.biometricType}
+          isLoading={isLoading}
+          onWitnessBypass={() => setStep('witness')}
+        />
+      );
+    }
 
-  if (step === 'witness') {
-    return (
-      <WitnessBypassComponent
-        onConfirm={handleConfirmWitness}
-        onBack={() => setStep('biometric')}
-        isLoading={isLoading}
-      />
-    );
-  }
+    if (step === 'witness') {
+      return (
+        <WitnessBypassComponent
+          onConfirm={handleConfirmWitness}
+          onBack={() => setStep('biometric')}
+          isLoading={isLoading}
+        />
+      );
+    }
 
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#1e3a8a_0%,_#0f172a_55%,_#020617_100%)] p-4 text-white">
-        <div className="mx-auto flex min-h-screen max-w-4xl items-center">
-          <div className="w-full overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-white/10 bg-emerald-500/20 px-8 py-8">
-              <p className="text-sm uppercase tracking-[0.35em] text-emerald-200">
-                {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Pendiente en local' : 'Documento emitido'}
-              </p>
-              <h1 className="mt-2 text-4xl font-black">
-                {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Entrega Registrada Localmente' : 'Acta de entrega certificada'}
-              </h1>
-              <p className="mt-3 max-w-2xl text-white/80">
-                {deliveryState.sha256 === 'PENDIENTE_ONLINE'
-                  ? 'El acta ha sido guardada en la base de datos local (IndexedDB). Se emitirá al servidor una vez recuperada la conexión.'
-                  : 'El PDF se descargó correctamente y la integridad quedó registrada en MySQL para auditoría.'}
-              </p>
+    if (step === 'success') {
+      return (
+        <div className="w-full max-w-4xl overflow-hidden rounded-2xl border-4 border-border bg-bg-card text-text-main shadow-2xl">
+          <div className="border-b-4 border-border bg-success text-white px-8 py-8">
+            <p className="text-sm uppercase tracking-[0.35em] font-black">
+              {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Pendiente en local' : 'Documento emitido'}
+            </p>
+            <h1 className="mt-2 text-4xl font-black">
+              {deliveryState.sha256 === 'PENDIENTE_ONLINE' ? 'Entrega Registrada Localmente' : 'Acta de entrega certificada'}
+            </h1>
+            <p className="mt-3 max-w-2xl text-white/90 font-bold">
+              {deliveryState.sha256 === 'PENDIENTE_ONLINE'
+                ? 'El acta ha sido guardada en la base de datos local (IndexedDB). Se emitirá al servidor una vez recuperada la conexión.'
+                : 'El PDF se descargó correctamente y la integridad quedó registrada en MySQL para auditoría.'}
+            </p>
+          </div>
+
+          <div className="grid gap-6 px-8 py-8 md:grid-cols-2 bg-bg-card">
+            <div className="rounded-xl border-4 border-border bg-bg-card p-6 text-text-main">
+              <h2 className="text-lg font-black text-text-main">Resumen legal</h2>
+              <dl className="mt-4 space-y-3 text-sm font-bold text-text-muted">
+                <div className="flex justify-between gap-4"><dt>Trabajador</dt><dd className="font-black text-text-main">{deliveryState.workerFullName}</dd></div>
+                <div className="flex justify-between gap-4"><dt>RUT</dt><dd className="font-black text-text-main">{formatChileanRut(deliveryState.rut)}</dd></div>
+                <div className="flex justify-between gap-4"><dt>EPP seleccionados</dt><dd className="font-black text-text-main">{selectedItems.length}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Bypass Testigo</dt><dd className="font-black text-text-main">{deliveryState.isException ? 'SÍ' : 'NO'}</dd></div>
+                <div className="flex justify-between gap-4"><dt>SHA-256</dt><dd className="font-mono text-xs text-text-main break-all font-black">{deliveryState.sha256}</dd></div>
+              </dl>
             </div>
 
-            <div className="grid gap-6 px-8 py-8 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-6">
-                <h2 className="text-lg font-semibold text-white">Resumen legal</h2>
-                <dl className="mt-4 space-y-3 text-sm text-slate-200">
-                  <div className="flex justify-between gap-4"><dt>Trabajador</dt><dd className="font-medium text-white">{deliveryState.workerFullName}</dd></div>
-                  <div className="flex justify-between gap-4"><dt>RUT</dt><dd className="font-medium text-white">{formatChileanRut(deliveryState.rut)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt>EPP seleccionados</dt><dd className="font-medium text-white">{selectedItems.length}</dd></div>
-                  <div className="flex justify-between gap-4"><dt>Bypass Testigo</dt><dd className="font-medium text-white">{deliveryState.isException ? 'SÍ' : 'NO'}</dd></div>
-                  <div className="flex justify-between gap-4"><dt>SHA-256</dt><dd className="font-mono text-xs text-emerald-200 break-all">{deliveryState.sha256}</dd></div>
-                </dl>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-slate-200">
-                <p className="font-semibold text-white">Identificadores de auditoría</p>
-                <div className="mt-4 space-y-3 break-all">
-                  <p><span className="font-medium text-white">Delivery ID:</span> {deliveryState.equipmentDeliveryId}</p>
-                  <p><span className="font-medium text-white">Integrity ID:</span> {deliveryState.documentIntegrityId}</p>
-                  <p><span className="font-medium text-white">Biometría:</span> {deliveryState.biometricType}</p>
-                </div>
+            <div className="rounded-xl border-4 border-border bg-bg-card p-6 text-sm text-text-muted">
+              <p className="font-black text-text-main text-base">Identificadores de auditoría</p>
+              <div className="mt-4 space-y-3 break-all font-bold">
+                <p><span className="font-black text-text-main">Delivery ID:</span> {deliveryState.equipmentDeliveryId}</p>
+                <p><span className="font-black text-text-main">Integrity ID:</span> {deliveryState.documentIntegrityId}</p>
+                <p><span className="font-black text-text-main">Biometría:</span> {deliveryState.biometricType}</p>
               </div>
             </div>
+          </div>
 
-            <div className="border-t border-white/10 px-8 py-6">
-              <a
-                href="/equipment-delivery"
-                className="inline-flex rounded-full bg-white px-5 py-3 font-semibold text-slate-900 transition hover:scale-[1.01]"
-              >
-                Generar otro documento
-              </a>
-            </div>
+          <div className="border-t-4 border-border px-8 py-6 bg-bg-card">
+            <button
+              onClick={() => {
+                setDeliveryState({
+                  rut: '',
+                  workerFullName: '',
+                  biometricType: 'FACE',
+                  equipmentItems: initialCatalog,
+                });
+                setStep('form');
+              }}
+              className="inline-flex rounded-xl bg-secondary border-4 border-border px-6 py-4.5 font-black text-white hover:bg-interactive-hover active:scale-95 transition"
+            >
+              Generar otro documento
+            </button>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (step === 'error') {
+    if (step === 'error') {
+      return (
+        <div className="rounded-2xl border-4 border-border bg-bg-card p-8 shadow-2xl text-text-main max-w-2xl w-full">
+          <p className="text-sm uppercase tracking-[0.3em] text-danger font-black">Error de flujo</p>
+          <h1 className="mt-3 text-3xl font-black">No se pudo completar la entrega</h1>
+          <p className="mt-4 text-text-main font-bold">{error}</p>
+          <div className="mt-8 flex gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep('form');
+              }}
+              className="rounded-xl bg-secondary px-6 py-4.5 border-4 border-border font-black text-white hover:bg-interactive-hover transition"
+            >
+              Volver al formulario
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep('form');
+              }}
+              className="rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 font-black text-text-main hover:bg-bg-main transition"
+            >
+              Reiniciar proceso
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 p-4 text-white">
-        <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center">
-          <div className="rounded-[2rem] border border-white/10 bg-white/8 p-8 shadow-2xl backdrop-blur-xl">
-            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Error de flujo</p>
-            <h1 className="mt-3 text-3xl font-bold">No se pudo completar la entrega</h1>
-            <p className="mt-4 text-white/80">{error}</p>
-            <div className="mt-8 flex gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setStep('form');
-                }}
-                className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-slate-950"
-              >
-                Volver al formulario
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setStep('form');
-                }}
-                className="rounded-full border border-white/20 px-5 py-3 font-semibold text-white"
-              >
-                Reiniciar proceso
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.16)_0%,_rgba(15,23,42,0.98)_42%,_#020617_100%)] px-4 py-6 text-white">
-      <div className="mx-auto max-w-7xl">
-        {/* Offline notification banner */}
+      <div className="w-full">
         {!online && (
-          <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">
+          <div className="mb-6 rounded-xl border-4 border-border bg-warning text-white dark:text-black p-4 text-center font-extrabold flex items-center justify-center gap-2">
             ⚠️ <strong>Modo Offline Activo:</strong> Se detectó pérdida de red. Las firmas se procesarán localmente en IndexedDB.
           </div>
         )}
 
-        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 shadow-2xl backdrop-blur-xl">
+        <section className="overflow-hidden rounded-2xl border-4 border-border bg-bg-card shadow-2xl">
           <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="p-8 lg:p-10">
-              <p className="text-sm uppercase tracking-[0.35em] text-amber-300">Sprint 4 · Testigo y Geofencing</p>
-              <h1 className="mt-4 text-4xl font-black leading-tight lg:text-6xl">
+            <div className="p-8 lg:p-10 text-text-main bg-bg-card">
+              <p className="text-sm font-black uppercase tracking-[0.35em] text-secondary">Testigo de Fe y Geofencing</p>
+              <h1 className="mt-4 text-4xl font-black leading-tight lg:text-5xl">
                 Entrega de EPP con validación biométrica e integridad SHA-256
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200">
+              <p className="mt-5 max-w-2xl text-base leading-7 text-text-muted font-bold">
                 Selecciona el catálogo de implementos, captura la firma manuscrita y valida la identidad en vivo para emitir el acta legal sellada por el backend.
               </p>
 
               {error && (
-                <div className="mt-6 rounded-2xl border border-red-400/40 bg-red-500/15 px-4 py-3 text-sm text-red-100">
-                  {error}
+                <div className="mt-6 rounded-xl border-4 border-danger bg-danger/10 px-4 py-3 text-sm text-text-main font-bold">
+                  ❌ {error}
                 </div>
               )}
 
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Paso actual</p>
-                  <p className="mt-2 text-lg font-semibold capitalize">{step}</p>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4 text-text-main">
+                  <p className="text-xs uppercase tracking-[0.25em] text-text-muted font-black">Paso actual</p>
+                  <p className="mt-2 text-lg font-black capitalize">{step}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">EPP seleccionados</p>
-                  <p className="mt-2 text-lg font-semibold">{selectedItems.length}</p>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4 text-text-main">
+                  <p className="text-xs uppercase tracking-[0.25em] text-text-muted font-black">EPP seleccionados</p>
+                  <p className="mt-2 text-lg font-black">{selectedItems.length}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Biometría</p>
-                  <p className="mt-2 text-lg font-semibold">{deliveryState.biometricType}</p>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4 text-text-main">
+                  <p className="text-xs uppercase tracking-[0.25em] text-text-muted font-black">Biometría</p>
+                  <p className="mt-2 text-lg font-black">{deliveryState.biometricType}</p>
                 </div>
               </div>
 
-              <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-slate-950/30 p-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-200">Nombre completo</span>
+              <div className="mt-8 rounded-2xl border-4 border-border bg-bg-card p-8">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <label className="space-y-3">
+                    <span className="text-base font-black text-text-main">Nombre completo del trabajador</span>
                     <input
                       type="text"
                       value={deliveryState.workerFullName}
                       onChange={(event) => setDeliveryState((prev) => ({ ...prev, workerFullName: event.target.value }))}
                       placeholder="Juan Pérez Soto"
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-400 focus:border-amber-300 focus:outline-none"
+                      className="w-full rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition-all duration-150"
                     />
                   </label>
 
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-200">RUT</span>
+                  <label className="space-y-3">
+                    <span className="text-base font-black text-text-main">RUT del trabajador</span>
                     <input
                       type="text"
                       value={deliveryState.rut}
@@ -572,19 +590,17 @@ export default function EquipmentDeliveryPage() {
                       onBlur={() => {
                         try {
                           setDeliveryState((prev) => ({ ...prev, rut: formatChileanRut(prev.rut) }));
-                        } catch {
-                          // Mantener el valor si el formateo falla
-                        }
+                        } catch {}
                       }}
                       placeholder="12.345.678-9"
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-400 focus:border-amber-300 focus:outline-none"
+                      className="w-full rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition-all duration-150"
                     />
                   </label>
                 </div>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-200">Tipo biométrico</span>
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+                  <label className="space-y-3">
+                    <span className="text-base font-black text-text-main">Tipo de validación biométrica</span>
                     <select
                       value={deliveryState.biometricType}
                       onChange={(event) =>
@@ -593,24 +609,24 @@ export default function EquipmentDeliveryPage() {
                           biometricType: event.target.value as 'FACE' | 'PALM',
                         }))
                       }
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-amber-300 focus:outline-none"
+                      className="w-full rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main focus:border-secondary focus:outline-none transition-all duration-150"
                     >
                       <option value="FACE">Rostro</option>
                       <option value="PALM">Palma</option>
                     </select>
                   </label>
 
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-slate-200">Ubicación GPS</span>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                      {coords ? `Lat: ${coords.latitude.toFixed(4)} | Lon: ${coords.longitude.toFixed(4)}` : 'Obteniendo GPS...'}
+                  <div className="space-y-3">
+                    <span className="text-base font-black text-text-main">Ubicación GPS de obra</span>
+                    <div className="rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main font-mono font-bold">
+                      {coords ? `📍 Lat: ${coords.latitude.toFixed(6)} | Lon: ${coords.longitude.toFixed(6)}` : '🛰️ Obteniendo GPS...'}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Catálogo de EPP</h2>
+                <div className="mt-8">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-2xl font-black text-text-main">Catálogo de EPP</h2>
                     <button
                       type="button"
                       onClick={() =>
@@ -619,7 +635,7 @@ export default function EquipmentDeliveryPage() {
                           equipmentItems: prev.equipmentItems.map((item) => ({ ...item, selected: true })),
                         }))
                       }
-                      className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                      className="rounded-xl border-4 border-border bg-secondary px-6 py-3.5 text-base font-black text-white hover:bg-interactive-hover active:scale-95 transition"
                     >
                       Seleccionar todo
                     </button>
@@ -627,42 +643,42 @@ export default function EquipmentDeliveryPage() {
                   {renderCatalog()}
                 </div>
 
-                <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                <div className="mt-8 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-2xl border-4 border-border bg-bg-card p-6">
                   <div>
-                    <p className="font-semibold text-emerald-100">{selectedItems.length} implementos listos para emitir</p>
-                    <p className="text-sm text-emerald-50/80">El backend generará el PDF y devolverá el checksum SHA-256 en cabeceras.</p>
+                    <p className="text-lg font-black text-text-main">{selectedItems.length} implementos seleccionados</p>
+                    <p className="text-sm text-text-muted font-bold">Listo para capturar firma e identidad del trabajador.</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleFormContinue}
-                    className="rounded-full bg-amber-400 px-6 py-3 font-semibold text-slate-950 transition hover:scale-[1.01] hover:bg-amber-300"
+                    className="w-full md:w-auto rounded-xl bg-secondary text-white px-8 py-5 text-xl font-black border-4 border-border transition hover:bg-interactive-hover active:scale-[0.97]"
                   >
-                    Continuar al documento
+                    Continuar al documento ➡️
                   </button>
                 </div>
               </div>
             </div>
 
-            <aside className="border-t border-white/10 bg-slate-950/30 p-8 lg:border-l lg:border-t-0">
-              <div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-b from-amber-400/20 to-transparent p-6">
-                <p className="text-xs uppercase tracking-[0.25em] text-amber-200">Integridad</p>
-                <h2 className="mt-3 text-2xl font-bold text-white">Sellado legal del documento</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-200">
+            <aside className="border-t-4 border-border bg-bg-card p-8 lg:border-l-4 lg:border-t-0 text-text-main">
+              <div className="rounded-xl border-4 border-border bg-bg-card p-6">
+                <p className="text-xs uppercase tracking-[0.25em] text-secondary font-black">Integridad</p>
+                <h2 className="mt-3 text-2xl font-black text-text-main">Sellado legal del documento</h2>
+                <p className="mt-3 text-sm leading-6 text-text-muted font-bold">
                   La entrega se autoriza solo si la captura en vivo coincide con el vector biométrico registrado. Luego el backend emite el acta PDF y guarda la huella SHA-256 en MySQL.
                 </p>
               </div>
 
-              <div className="mt-6 space-y-4 text-sm text-slate-200">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="font-semibold text-white">1. Verificación 1:1</p>
+              <div className="mt-6 space-y-4 text-sm text-text-muted font-bold">
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4">
+                  <p className="font-black text-text-main">1. Verificación 1:1</p>
                   <p className="mt-1">Comparación criptográfica contra el log biométrico cifrado del trabajador.</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="font-semibold text-white">2. PDF dinámico</p>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4">
+                  <p className="font-black text-text-main">2. PDF dinámico</p>
                   <p className="mt-1">Se inyectan datos del trabajador, timestamp, firma y listado de implementos.</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="font-semibold text-white">3. SHA-256</p>
+                <div className="rounded-xl border-4 border-border bg-bg-card p-4">
+                  <p className="font-black text-text-main">3. SHA-256</p>
                   <p className="mt-1">El archivo se sella, se registra su checksum y queda listo para auditoría.</p>
                 </div>
               </div>
@@ -670,7 +686,16 @@ export default function EquipmentDeliveryPage() {
           </div>
         </section>
       </div>
-    </main>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-main text-text-main transition-colors duration-150">
+      <ThemeHeader />
+      <main className="flex-1 flex items-center justify-center p-4">
+        {renderFlowContent()}
+      </main>
+    </div>
   );
 }
 
@@ -770,86 +795,84 @@ function WitnessBypassComponent({ onConfirm, onBack, isLoading }: WitnessBypassP
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 flex items-center justify-center p-4 text-white">
-      <div className="rounded-[2rem] border border-white/10 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-xl max-w-2xl w-full">
-        <span className="text-xs font-bold uppercase tracking-[0.25em] text-rose-400">Excepción</span>
-        <h1 className="mt-2 text-3xl font-black">Bypass por Testigo de Fe</h1>
-        <p className="mt-2 text-sm text-slate-300 leading-normal">
-          Ingrese los datos del prevencionista o supervisor autorizado que actúa como Testigo de Fe para esta entrega.
-        </p>
+    <div className="bg-bg-card border-4 border-border rounded-2xl p-8 shadow-2xl max-w-2xl w-full text-text-main select-none">
+      <span className="text-xs font-black uppercase tracking-[0.25em] text-warning">Excepción</span>
+      <h1 className="mt-2 text-3xl font-black">Bypass por Testigo de Fe</h1>
+      <p className="mt-2 text-sm text-text-muted font-bold leading-normal">
+        Ingrese los datos del prevencionista o supervisor autorizado que actúa como Testigo de Fe para esta entrega.
+      </p>
 
-        <div className="mt-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              Nombre Testigo
-              <input
-                type="text"
-                value={witnessName}
-                onChange={(e) => setWitnessName(e.target.value)}
-                placeholder="Ej: Mario Rojas"
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              RUT Testigo
-              <input
-                type="text"
-                value={witnessRut}
-                onChange={(e) => setWitnessRut(e.target.value.toUpperCase())}
-                onBlur={() => {
-                  try {
-                    setWitnessRut(formatChileanRut(witnessRut));
-                  } catch {}
-                }}
-                placeholder="Ej: 12.345.678-9"
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
-              />
-            </label>
+      <div className="mt-6 space-y-5">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <label className="flex flex-col gap-3 text-base font-black text-text-main">
+            Nombre completo del Testigo
+            <input
+              type="text"
+              value={witnessName}
+              onChange={(e) => setWitnessName(e.target.value)}
+              placeholder="Ej: Mario Rojas"
+              className="rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition-all duration-150"
+            />
+          </label>
+          <label className="flex flex-col gap-3 text-base font-black text-text-main">
+            RUT del Testigo
+            <input
+              type="text"
+              value={witnessRut}
+              onChange={(e) => setWitnessRut(e.target.value.toUpperCase())}
+              onBlur={() => {
+                try {
+                  setWitnessRut(formatChileanRut(witnessRut));
+                } catch {}
+              }}
+              placeholder="Ej: 12.345.678-9"
+              className="rounded-xl border-4 border-border bg-bg-card px-6 py-4.5 text-lg text-text-main placeholder:text-text-muted focus:border-secondary focus:outline-none transition-all duration-150"
+            />
+          </label>
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-base font-black text-text-main">Firma manuscrita del Testigo de Fe</span>
+          <div className="overflow-hidden rounded-xl border-4 border-border bg-white">
+            <canvas
+              ref={canvasRef}
+              width={700}
+              height={260}
+              className="w-full h-64 touch-none cursor-crosshair"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+            />
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <span className="text-sm font-semibold text-slate-300">Firma del Testigo de Fe</span>
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-white">
-              <canvas
-                ref={canvasRef}
-                width={600}
-                height={200}
-                className="w-full h-40 touch-none cursor-crosshair"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-              />
-            </div>
+        {error && (
+          <div className="rounded-xl border-4 border-danger bg-danger/10 p-4 text-sm text-text-main font-bold">
+            ❌ {error}
           </div>
+        )}
 
-          {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-4 pt-2">
-            <button
-              onClick={handleConfirm}
-              disabled={isLoading}
-              className="flex-1 rounded-full bg-rose-500 py-3 font-semibold hover:bg-rose-400 transition"
-            >
-              {isLoading ? '⏳ Registrando...' : 'Confirmar Autorización'}
-            </button>
-            <button
-              onClick={handleClear}
-              className="rounded-full border border-white/10 bg-slate-800 px-6 py-3 font-semibold hover:bg-slate-700 transition"
-            >
-              🧹 Limpiar
-            </button>
-            <button
-              onClick={onBack}
-              className="rounded-full border border-white/10 bg-slate-800 px-6 py-3 font-semibold hover:bg-slate-700 transition"
-            >
-              Atrás
-            </button>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <button
+            onClick={handleConfirm}
+            disabled={isLoading}
+            className="flex-1 order-last sm:order-first rounded-xl bg-danger text-white py-4.5 px-8 text-lg font-black hover:bg-danger/90 active:scale-[0.98] transition border-4 border-border"
+          >
+            {isLoading ? '⏳ Registrando...' : 'Confirmar Autorización y Guardar'}
+          </button>
+          <button
+            onClick={handleClear}
+            className="rounded-xl border-4 border-border bg-bg-card px-8 py-4.5 text-lg font-black hover:bg-bg-main active:scale-[0.98] transition text-text-main"
+          >
+            🧹 Limpiar
+          </button>
+          <button
+            onClick={onBack}
+            className="rounded-xl border-4 border-border bg-bg-card px-8 py-4.5 text-lg font-black hover:bg-bg-main active:scale-[0.98] transition text-text-main"
+          >
+            Atrás
+          </button>
         </div>
       </div>
     </div>

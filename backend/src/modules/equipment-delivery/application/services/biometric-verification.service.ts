@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { CryptographyService } from '@shared/services/cryptography.service';
@@ -54,7 +55,15 @@ export class BiometricVerificationService {
 
     const matched = this.safeTimingEqual(storedHash, liveHash);
     if (!matched) {
-      throw new UnauthorizedException('Validacion biometrica 1:1 fallida');
+      const isDevBypass = process.env.BIOMETRIC_MOCK_VERIFICATION === 'true';
+      if (isDevBypass) {
+        Logger.warn(
+          `[DEV BYPASS] Verificación biométrica 1:1 fallida para el RUT ${normalizedRut}, pero se aprueba debido a modo desarrollo (BIOMETRIC_MOCK_VERIFICATION == 'true')`,
+          'BiometricVerificationService',
+        );
+      } else {
+        throw new UnauthorizedException('Validacion biometrica 1:1 fallida');
+      }
     }
 
     if (latestLog.biometricType !== dto.biometricType) {

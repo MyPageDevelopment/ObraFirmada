@@ -28,7 +28,7 @@ export class GroupTalkController {
     response.setHeader('X-Group-Talk-Id', result.groupTalkId);
     response.setHeader('X-Document-Sha256', result.sha256);
 
-    return new StreamableFile(result.sealedPdfBuffer, {
+    return new StreamableFile(result.pdfStream, {
       type: 'application/pdf',
       disposition: 'attachment; filename="acta-charla-grupal.pdf"',
     });
