@@ -23,7 +23,7 @@ class GroupTalkApiService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+      baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
       timeout: 60000,
       headers: {
         'Content-Type': 'application/json',

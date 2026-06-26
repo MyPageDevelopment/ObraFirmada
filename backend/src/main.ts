@@ -6,12 +6,18 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // SEGURIDAD: Habilitar CORS restrictivo
+  // SEGURIDAD: Habilitar CORS restrictivo y dinámico para desarrollo y pruebas (Sauce Labs/ngrok)
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: [
+      'X-Document-Integrity-Id',
+      'X-Document-Sha256',
+      'X-Equipment-Delivery-Id',
+      'Content-Disposition',
+    ],
   });
 
   // Permitir payloads Base64 para biometria y firma
